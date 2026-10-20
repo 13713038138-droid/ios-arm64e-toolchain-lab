@@ -1,0 +1,68 @@
+name: Public macOS arm64e toolchain probe
+
+on:
+  push:
+    paths:
+      - ".github/workflows/arm64e-probe.yml"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-arm64e-probe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  synthetic-arm64e:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Inspect public standard runner; compile synthetic arm64e only
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## macOS and toolchain"
+          sw_vers
+          xcodebuild -version
+          echo "Xcode path: $(xcode-select -p)"
+          echo "iPhoneOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          xcrun clang --version | head -3
+          xcrun swiftc --version
+
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          cat > "$RUNNER_TEMP/arm64e_probe.mm" <<'EOF'
+          #ifndef __arm64e__
+          #error "Compiler target is not arm64e"
+          #endif
+          #include <ptrauth.h>
+          extern "C" void sth_public_probe_target(void) {}
+          extern "C" int sth_public_probe_entry(void) {
+              void (*fn)(void) = &sth_public_probe_target;
+              fn();
+              return 0;
+          }
+          EOF
+
+          echo "## arm64e synthetic object compilation"
+          xcrun clang++ -target arm64e-apple-ios16.0 \
+            -isysroot "$SDK" -c "$RUNNER_TEMP/arm64e_probe.mm" \
+            -o "$RUNNER_TEMP/arm64e_probe.o"
+          file "$RUNNER_TEMP/arm64e_probe.o"
+          xcrun otool -hv "$RUNNER_TEMP/arm64e_probe.o"
+
+          echo "## Pointer-auth compile feature macros (informational)"
+          printf '\n' | xcrun clang -target arm64e-apple-ios16.0 \
+            -isysroot "$SDK" -dM -E -x c - | grep -E '(__arm64e__|__ptrauth_abi_version__|__has_feature)' || true
+
+          echo "## LLVM IR / PAC ABI metadata (informational, not a release gate)"
+          xcrun clang++ -target arm64e-apple-ios16.0 \
+            -isysroot "$SDK" -S -emit-llvm "$RUNNER_TEMP/arm64e_probe.mm" \
+            -o "$RUNNER_TEMP/arm64e_probe.ll"
+          if grep -E 'ptrauth\.abi-version|ptrauth' "$RUNNER_TEMP/arm64e_probe.ll" | head -12; then
+            echo "IR pointer-auth details above; inspect semantics before asserting PAC ABI parity."
+          else
+            echo "No explicit PAC ABI metadata detected; do not infer ABI from absence."
+          fi
+          echo "PUBLIC_TOOLCHAIN_PROBE_COMPLETED=1"
