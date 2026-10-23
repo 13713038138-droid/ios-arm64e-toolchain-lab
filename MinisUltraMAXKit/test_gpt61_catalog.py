@@ -24,7 +24,7 @@ API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
                 model.supportsReasoning = reasoning
             }
             return model
-        let models = appendBuiltInImageModels(to: discovered)
+                let models = appendBuiltInImageModels(to: discovered)
     /// [T-codex-image-models-survive-discovery] Add the built-in Codex image
 '''
 TESTS = '''    func testGPT61SolIsAppendedForGPT6OAuthCatalog() {
