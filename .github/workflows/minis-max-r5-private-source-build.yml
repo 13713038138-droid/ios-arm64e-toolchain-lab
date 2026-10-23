@@ -1,4 +1,5 @@
 name: Minis Dev Ultra MAX R5 private-source IPA build
+# Re-trigger after prior queued run did not receive a hosted runner.
 on:
   push:
     branches:
