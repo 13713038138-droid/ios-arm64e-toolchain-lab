@@ -196,7 +196,7 @@ jobs:
           MINIS_DEV_ULTRA_LIB="$APP/default_mount/usr/local/lib/minis-dev-ultra" "$APP/default_mount/usr/local/bin/minis-bin" "$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")" | grep -q '"kind": "macho64"'
           BIN="$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
           mkdir -p "$RUNNER_TEMP/ultra-output"
-          strings "$BIN" > "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
+          strings -a "$BIN" > "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
           for marker in 'gpt-6.1-sol' 'GPT-6.1-Sol' '0.159.1'; do
             grep -Fq "$marker" "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" || { echo "NO-GO: compiled binary is missing GPT-6.1 marker $marker"; exit 1; }
           done
@@ -348,7 +348,7 @@ jobs:
             gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5.2 — GPT-6.1-Sol + HookLab" --notes-file "$NOTES"
           fi
           gh release upload "$TAG" --repo "$PUBLISH_REPO" --clobber "$IPA" "$SHA" "$LIMITS" "$PROVENANCE" "$MODEL_GATE" "$NOTES" "$RUNNER_TEMP/r5-build.log" "$RUNNER_TEMP/minis-build.log" "$RUNNER_TEMP/gpt61-tests.log"
-          echo "R5 IPA build completed. IPA and verification evidence were uploaded to the private R5 repository Release." >> "$GITHUB_STEP_SUMMARY"
+          echo "R5 IPA build completed. IPA and verification evidence were uploaded to the public R5 toolchain Release." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish failure diagnostics to public R5 release
         if: failure() && env.SOURCE_SHA != ''
@@ -371,3 +371,23 @@ jobs:
           if [[ -s "$RUNNER_TEMP/gpt61-tests.log" ]]; then gh release upload "$TAG" --repo "$PUBLISH_REPO" --clobber "$RUNNER_TEMP/gpt61-tests.log"; fi
           if [[ -s "$RUNNER_TEMP/r5-publish.log" ]]; then gh release upload "$TAG" --repo "$PUBLISH_REPO" --clobber "$RUNNER_TEMP/r5-publish.log"; fi
           echo "R5 build failed. Diagnostic evidence was routed to the public R5 release." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload R5 delivery and diagnostic artifact fallback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MinisDevUltraMAX-R5-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ultra-output/isolated/MinisDevUltraMAX-R5-AutoRouting-ADHOC-TROLLSTORE-TEST.ipa
+            ${{ runner.temp }}/ultra-output/isolated/SIGNED_SHA256SUMS.txt
+            ${{ runner.temp }}/ultra-output/isolated/SIGNATURE_LIMITS.txt
+            ${{ runner.temp }}/ultra-output/GPT61_MODEL_GATE.txt
+            ${{ runner.temp }}/ultra-output/Minis-executable-strings.txt
+            ${{ runner.temp }}/ultra-output/FAILURE.txt
+            ${{ runner.temp }}/ultra-output/BUILD_PROVENANCE.txt
+            ${{ runner.temp }}/r5-build.log
+            ${{ runner.temp }}/minis-build.log
+            ${{ runner.temp }}/gpt61-tests.log
+            ${{ runner.temp }}/r5-publish.log
+          if-no-files-found: warn
+          retention-days: 14
