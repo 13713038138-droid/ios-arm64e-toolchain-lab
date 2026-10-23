@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           python3 --version
           python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           git clone https://github.com/OpenMinis/OpenMinis.git "$RUNNER_TEMP/OpenMinis"
           cd "$RUNNER_TEMP/OpenMinis"
           git checkout --detach "$SOURCE_COMMIT"
@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           python3 --version
           python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
@@ -126,7 +126,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           XCODE_PATH="$(find /Applications -maxdepth 1 -name 'Xcode_26.*.app' | sort | tail -1)"
           test -n "$XCODE_PATH" || { echo 'NO-GO: Xcode 26.x unavailable'; exit 1; }
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
@@ -144,7 +144,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           cp src/ios/Configs/ProviderCustomization.xcconfig.example src/ios/Configs/ProviderCustomization.xcconfig
           ./deps/build_lame.sh
           ./deps/build_ffmpeg.sh
@@ -157,7 +157,7 @@ jobs:
         working-directory: ${{ runner.temp }}/OpenMinis
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/MinisDerivedData" \
             CODE_SIGNING_ALLOWED=NO MARKETING_VERSION=1.15.1 CURRENT_PROJECT_VERSION=20 build 2>&1 | tee "$RUNNER_TEMP/minis-build.log"
@@ -196,7 +196,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          exec > >(tee -a "$RUNNER_TEMP/r5-build.log") 2>&1
           SOURCE_APP="$RUNNER_TEMP/MinisDerivedData/Build/Products/Release-iphoneos/Minis.app"
           TEST="$RUNNER_TEMP/ultra-output/isolated/Payload/Minis.app"
           mkdir -p "$(dirname "$TEST")"
@@ -301,7 +301,7 @@ jobs:
           (cd "$(dirname "$IPA")" && shasum -a 256 "$(basename "$IPA")" > "$(basename "$SHA")")
           TAG="minis-max-r5-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 — TrollStore test IPA" --notes "Public R5 test build. Install only as a separate TrollStore test app. Not an App Store-signed replacement; keep the original Minis app and its data intact." "$IPA" "$SHA" "$LIMITS" "$PROVENANCE"
-          gh release upload "$TAG" --repo "$PUBLISH_REPO" "$RUNNER_TEMP/r5-private-build.log" "$RUNNER_TEMP/minis-build.log"
+          gh release upload "$TAG" --repo "$PUBLISH_REPO" "$RUNNER_TEMP/r5-build.log" "$RUNNER_TEMP/minis-build.log"
           echo "R5 IPA build completed. IPA and verification evidence were uploaded to the private R5 repository Release." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish failure diagnostics to public R5 release
@@ -313,9 +313,9 @@ jobs:
           set -euo pipefail
           exec >/dev/null 2>> "$RUNNER_TEMP/r5-publish.log"
           mkdir -p "$RUNNER_TEMP/ultra-output"
-          printf '%s\n' 'R5 build failed before successful IPA delivery.' 'Full build logs are attached privately when release permissions permit.' > "$RUNNER_TEMP/ultra-output/FAILURE.txt"
+          printf '%s\n' 'R5 build failed before successful IPA delivery.' 'Full build logs are attached to this public diagnostic release.' > "$RUNNER_TEMP/ultra-output/FAILURE.txt"
           TAG="minis-max-r5-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}-diagnostic"
-          gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 build diagnostics" --notes "Public diagnostic bundle only. This release does not contain a verified installable IPA." "$RUNNER_TEMP/ultra-output/FAILURE.txt" "$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt" "$RUNNER_TEMP/r5-private-build.log"
+          gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 build diagnostics" --notes "Public diagnostic bundle only. This release does not contain a verified installable IPA." "$RUNNER_TEMP/ultra-output/FAILURE.txt" "$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt" "$RUNNER_TEMP/r5-build.log"
           if [[ -s "$RUNNER_TEMP/minis-build.log" ]]; then gh release upload "$TAG" --repo "$PUBLISH_REPO" "$RUNNER_TEMP/minis-build.log"; fi
           if [[ -s "$RUNNER_TEMP/r5-publish.log" ]]; then gh release upload "$TAG" --repo "$PUBLISH_REPO" "$RUNNER_TEMP/r5-publish.log"; fi
           echo "R5 build failed. Diagnostic evidence was routed to the public R5 release." >> "$GITHUB_STEP_SUMMARY"
