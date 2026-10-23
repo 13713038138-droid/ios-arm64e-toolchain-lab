@@ -1,0 +1,326 @@
+name: Minis Dev Ultra MAX R5 private-source IPA build
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: minis-max-r5-private-source-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      SOURCE_COMMIT: b4c0661d5631ebab4d1a2e6f3fd4c805d4030a6c
+      MINIS_MAX_BUNDLE_ID: com.openminis.devultramax.r5
+      PRIVATE_REPO: 408132-source/SthenoBuild-Private-R32
+    steps:
+      - name: Verify private checkout credential is configured
+        shell: bash
+        env:
+          R5_PRIVATE_TOKEN: ${{ secrets.MINIS_R5_PRIVATE_TOKEN }}
+        run: |
+          if [[ -z "${R5_PRIVATE_TOKEN:-}" ]]; then
+            echo "::error::Missing repository secret MINIS_R5_PRIVATE_TOKEN. Configure it in the public toolchain repository's Actions secrets."
+            exit 1
+          fi
+          echo "Private-source credential is configured."
+
+      - name: Check out private R5 source
+        uses: actions/checkout@v4
+        with:
+          repository: 408132-source/SthenoBuild-Private-R32
+          ref: minis-max-r5-auto-routing-20261023
+          token: ${{ secrets.MINIS_R5_PRIVATE_TOKEN }}
+          persist-credentials: false
+
+      - name: Record private source revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
+          echo "Private R5 source revision captured."
+
+      - name: Run portable source tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          python3 --version
+          python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
+          for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
+            sh -n "$script"
+          done
+          sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
+
+      - name: Fetch pinned OpenMinis source
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          git clone https://github.com/OpenMinis/OpenMinis.git "$RUNNER_TEMP/OpenMinis"
+          cd "$RUNNER_TEMP/OpenMinis"
+          git checkout --detach "$SOURCE_COMMIT"
+          git submodule update --init --recursive
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+
+      - name: Apply native developer enhancement
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          python3 --version
+          python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
+          for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
+            sh -n "$script"
+          done
+          sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
+          python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/apply_native_max.py" "$RUNNER_TEMP/OpenMinis"
+          python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py" doctor >/dev/null
+          python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py" doctor >/dev/null
+          python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_chat_perf.py" "$RUNNER_TEMP/OpenMinis"
+          python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_skill_archive.py" "$RUNNER_TEMP/OpenMinis"
+          MINIS_MAX_BUNDLE_ID="$MINIS_MAX_BUNDLE_ID" python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_ips_sigtrap.py" "$RUNNER_TEMP/OpenMinis"
+          MINIS_MAX_BUNDLE_ID="$MINIS_MAX_BUNDLE_ID" python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_ips_sigtrap.py" "$RUNNER_TEMP/OpenMinis"
+          grep -q "minisIsolatedContainerBase" "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+RequestBudget.swift"
+          grep -q "FileProvider registration skipped" "$RUNNER_TEMP/OpenMinis/src/ios/MinisApp.swift"
+          grep -q "group.com.openminis.devultramax.r5" "$RUNNER_TEMP/OpenMinis/src/ios/Shared/SharedContainerStore.swift"
+          swift "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_visible_range.swift"
+          grep -q 'preparedFramesAreMonotone' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/MessageList/MessageListLayout.swift"
+          grep -q 'decodedTotal' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
+          grep -q 'installBundledUltraSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
+          grep -q 'case "devmax"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
+          grep -q '^## Specialist references' "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
+          test "$(find "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/references" -name '*.md' | wc -l | tr -d ' ')" = 19
+          python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
+          python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py"
+          python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" doctor >/dev/null
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py" doctor >/dev/null
+          python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_tk_optimizer.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
+          sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
+          python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/tk_optimizer.py"
+          test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-tk"
+          test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-deb"
+          test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-abi"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
+          grep -q 'case "devtk"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'case "devdeb"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'case "devabi"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/tk_optimizer.py" cost --input 1000000 --output 0 --cached 200000 --input-rate 10 --output-rate 20 --cached-rate 2 | grep -q "8.400000"
+
+      - name: Toolchain prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          XCODE_PATH="$(find /Applications -maxdepth 1 -name 'Xcode_26.*.app' | sort | tail -1)"
+          test -n "$XCODE_PATH" || { echo 'NO-GO: Xcode 26.x unavailable'; exit 1; }
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks
+          brew install ninja llvm lld libarchive pkg-config go meson
+          echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
+          test -x "$(brew --prefix lld)/bin/ld.lld" || { echo 'NO-GO: missing ld.lld'; exit 1; }
+          xcodebuild -downloadComponent MetalToolchain || true
+          xcrun -sdk iphoneos metal --version || echo "::warning::Metal unavailable; media feature may be reduced"
+          go version
+
+      - name: Build iSH and multimedia
+        working-directory: ${{ runner.temp }}/OpenMinis
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          cp src/ios/Configs/ProviderCustomization.xcconfig.example src/ios/Configs/ProviderCustomization.xcconfig
+          ./deps/build_lame.sh
+          ./deps/build_ffmpeg.sh
+          ./deps/build_ish.sh
+          ./deps/prepare_alpine_rootfs.sh
+          ./deps/build_rclone_ios.sh
+
+      - name: Compile unsigned device app
+        shell: bash
+        working-directory: ${{ runner.temp }}/OpenMinis
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/MinisDerivedData" \
+            CODE_SIGNING_ALLOWED=NO MARKETING_VERSION=1.15.1 CURRENT_PROJECT_VERSION=20 build 2>&1 | tee "$RUNNER_TEMP/minis-build.log"
+          APP="$RUNNER_TEMP/MinisDerivedData/Build/Products/Release-iphoneos/Minis.app"
+          test -d "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -Fx com.openminis.app
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist" | grep -Fx '1.15.1'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist" | grep -Fx '20'
+          /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist" | grep -Fx '16.0'
+          test ! -d "$APP/_CodeSignature"
+          for ext in "$APP"/PlugIns/*.appex; do
+            test -d "$ext"
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$ext/Info.plist"
+          done
+          test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
+          test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/tk_optimizer.py"
+          test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
+          test -x "$APP/default_mount/usr/local/bin/minis-abi"
+          test -f "$APP/default_mount/usr/local/bin/minis-tk"
+          test -x "$APP/default_mount/usr/local/bin/minis-bin"
+          test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/ensure-python3.sh"
+          test "$(find "$APP/default_mount/var/minis/skills/minis-dev-ultra/references" -name '*.md' | wc -l | tr -d ' ')" = 19
+          # Host-compiled Python bytecode is not valid guest source and must not ship.
+          find "$APP/default_mount" -type d -name '__pycache__' -prune -exec rm -rf {} +
+          test -f "$APP/default_mount/usr/local/bin/minis-dev-ultra"
+          test -f "$APP/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
+          python3 "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" route --task "iOS arm64e Hook crash build" | grep -q '"primary_profile"'
+          MINIS_DEV_ULTRA_LIB="$APP/default_mount/usr/local/lib/minis-dev-ultra" "$APP/default_mount/usr/local/bin/minis-bin" "$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")" | grep -q '"kind": "macho64"'
+          mkdir -p "$RUNNER_TEMP/ultra-output/Payload"
+          ditto "$APP" "$RUNNER_TEMP/ultra-output/Payload/Minis.app"
+          (cd "$RUNNER_TEMP/ultra-output" && zip -q -r MinisDevUltraMAX-UNSIGNED-BUILDONLY.ipa Payload)
+          (cd "$RUNNER_TEMP/ultra-output" && shasum -a 256 MinisDevUltraMAX-UNSIGNED-BUILDONLY.ipa > SHA256SUMS.txt)
+          printf '%s\n' 'UNSIGNED BUILD-ONLY, NOT SAFE TO INSTALL OR OVERWRITE APP STORE MINIS.' 'Original App Store team/Keychain/iCloud/app groups are not preserved by simply matching the bundle id.' > "$RUNNER_TEMP/ultra-output/NOT_FOR_INSTALL.txt"
+
+      - name: Build and ad-hoc sign isolated startup test clone
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec >> "$RUNNER_TEMP/r5-private-build.log" 2>&1
+          SOURCE_APP="$RUNNER_TEMP/MinisDerivedData/Build/Products/Release-iphoneos/Minis.app"
+          TEST="$RUNNER_TEMP/ultra-output/isolated/Payload/Minis.app"
+          mkdir -p "$(dirname "$TEST")"
+          ditto "$SOURCE_APP" "$TEST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $MINIS_MAX_BUNDLE_ID" "$TEST/Info.plist"
+          if /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$TEST/Info.plist" >/dev/null 2>&1; then
+            /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName MinisMAX-Test' "$TEST/Info.plist"
+          else
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleDisplayName string MinisMAX-Test' "$TEST/Info.plist"
+          fi
+          count=0
+          for ext in "$TEST"/PlugIns/*.appex; do
+            test -d "$ext"
+            old=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$ext/Info.plist")
+            case "$old" in
+              com.openminis.app.*) ;;
+              *) echo "NO-GO extension: $old"; exit 1 ;;
+            esac
+            suffix="${old#com.openminis.app}"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${MINIS_MAX_BUNDLE_ID}${suffix}" "$ext/Info.plist"
+            count=$((count+1))
+          done
+          test "$count" = 3
+          # Ad-hoc signature is for TrollStore isolated testing only.
+          while IFS= read -r -d '' lib; do
+            codesign -f -s - --timestamp=none "$lib"
+          done < <(find "$TEST/Frameworks" -type f -name '*.dylib' -print0)
+          while IFS= read -r -d '' fw; do
+            codesign -f -s - --timestamp=none "$fw"
+          done < <(find "$TEST/Frameworks" -type d -name '*.framework' -print0)
+          while IFS= read -r -d '' ext; do
+            codesign -f -s - --timestamp=none "$ext"
+          done < <(find "$TEST/PlugIns" -maxdepth 1 -type d -name '*.appex' -print0)
+          codesign -f -s - --timestamp=none "$TEST"
+          codesign --verify --deep --strict --verbose=2 "$TEST"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$TEST/Info.plist" | grep -Fx "$MINIS_MAX_BUNDLE_ID"
+          codesign -d -vv "$TEST" 2>&1 | tee "$RUNNER_TEMP/ultra-output/sign-test-evidence.txt"
+          (
+            cd "$RUNNER_TEMP/ultra-output/isolated"
+            zip -q -r -y MinisDevUltraMAX-R5-AutoRouting-ADHOC-TROLLSTORE-TEST.ipa Payload
+            shasum -a 256 MinisDevUltraMAX-R5-AutoRouting-ADHOC-TROLLSTORE-TEST.ipa > SIGNED_SHA256SUMS.txt
+          )
+          printf '%s\n' \
+            "Isolated app: $MINIS_MAX_BUNDLE_ID" \
+            'Fixes IPS 2C490985 crash at AIChatViewModel.minisAppGroupRoot getter.' \
+            'AD-HOC SIGNATURE: TEST WITH TROLLSTORE ONLY.' \
+            'Not an Apple Developer signature, not a safe replacement for App Store Minis.' \
+            'Original cloud and FileProvider privileges are not guaranteed.' \
+            'App Store original and its data must remain installed.' \
+            > "$RUNNER_TEMP/ultra-output/isolated/SIGNATURE_LIMITS.txt"
+
+      - name: Record R5 build provenance
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ultra-output"
+          {
+            echo 'R5 base: verified R4 build commit 7ba777db82c85b9b01facc5cc62817db8f88b4a2'
+            echo 'R5 automatic router blob SHA: 17ad787c0d3a9e38fd3ae74ef6369535581ffde7'
+            echo 'R5 binary wrapper blob SHA: 98dfbfa390cdf5d4069dea0070e69eed345311c3'
+            echo 'R5 local DEB factory blob SHA: bd6e854164c691097aabc69085b322ac33bf5c1b'
+            echo 'R5 local DEB unit tests blob SHA: 527dcbcac9b484db67ecf2bd2106d239c1e33f2c'
+            echo 'R5 local DEB wrapper blob SHA: c3ee568ca85d272288a372b9071995074fe0114d'
+            echo 'R5 wrapper test blob SHA: ffab29b673480a83313c80ef976e3b975d0f4616'
+            echo 'R5 route tests blob SHA: 69b73c0cfe631e7499c9202c5659f0914a2f684e'
+            echo 'R5 release reference blob SHA: 6c187735b7f67c9d41317c2a060c62762cb367d6'
+            echo 'R5 local DEB factory documentation blob SHA: c15f6c46b2a3f597746cb71910390e142e908a60'
+            echo 'R5 R32 ABI-v2 gate blob SHA: 4b3e517539e97e3f5633583c19d70349b59fc55b'
+            echo 'R5 R32 ABI-v2 unit tests blob SHA: 162c7469363e6309a93e1b671d156e0969ca7e7c'
+            echo 'R5 R32 ABI-v2 wrapper blob SHA: e31829e111ece4d66cfb2c372abd4b7f9738f19a'
+            echo 'R5 R32 ABI-v2 wrapper tests blob SHA: 8f2b3b559f0428d4068bc2bb80b3e827ed5617e4'
+            echo 'R5 R32 ABI-v2 docs blob SHA: 225c6813763233e7cd62b15db5863248b4f13bda'
+            echo 'R5 R32 ABI-v2 route blob SHA: 06c8c513cc312c2b4e3e585c6de31e0bef815bc3'
+            echo 'R5 R32 ABI-v2 route tests blob SHA: a5b5faeb496a488c29ab29bd1c280a26e8a55f5c'
+            echo 'R5 runtime integration blob SHA: b7529e39b656aa0cfdd87adab70ee3952a7e23e8'
+            echo 'R5 Python bootstrap blob SHA: de8834dbdbde86932c1b8fa8ec5ca17ffa39df8d'
+            echo 'R5 initial integration blob SHA: 221629216b91bc441648cd2b43ac6c205d1a0c97'
+            echo 'R5 patch identity blob SHA: dfb844f2dc10eb44c4966e05e21986cf3d444221'
+            echo 'R5 identity test blob SHA: f9e29f9699129092fabfc8b2fca3bde2b4edf7a2'
+            echo 'R5 router unit test blob SHA: 69b73c0cfe631e7499c9202c5659f0914a2f684e'
+            echo 'R5 isolated bundle ID: com.openminis.devultramax.r5'
+            echo 'Pinned OpenMinis source commit: b4c0661d5631ebab4d1a2e6f3fd4c805d4030a6c'
+            echo "Private R5 source commit: $SOURCE_SHA"
+            echo "Public runner workflow commit: $GITHUB_SHA"
+            echo 'Build: iOS 1.15.1 (20), isolated R5 identity, ad-hoc signature for TrollStore testing only'
+          } > "$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt"
+
+      - name: Publish successful IPA and evidence to private R5 release
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MINIS_R5_PRIVATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          exec >/dev/null 2>> "$RUNNER_TEMP/r5-publish.log"
+          IPA="$RUNNER_TEMP/ultra-output/isolated/MinisDevUltraMAX-R5-AutoRouting-ADHOC-TROLLSTORE-TEST.ipa"
+          SHA="$RUNNER_TEMP/ultra-output/isolated/SIGNED_SHA256SUMS.txt"
+          LIMITS="$RUNNER_TEMP/ultra-output/isolated/SIGNATURE_LIMITS.txt"
+          PROVENANCE="$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt"
+          test -s "$IPA"
+          test -s "$PROVENANCE"
+          shasum -a 256 "$IPA" > "$SHA"
+          TAG="minis-max-r5-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$TAG" --repo "$PRIVATE_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 — TrollStore test IPA" --notes "Private R5 test build. Install only as a separate TrollStore test app. Not an App Store-signed replacement; keep the original Minis app and its data intact." "$IPA" "$SHA" "$LIMITS" "$PROVENANCE"
+          gh release upload "$TAG" --repo "$PRIVATE_REPO" "$RUNNER_TEMP/r5-private-build.log" "$RUNNER_TEMP/minis-build.log"
+          echo "R5 IPA build completed. IPA and verification evidence were uploaded to the private R5 repository Release." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish failure diagnostics to private R5 release
+        if: failure() && env.SOURCE_SHA != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MINIS_R5_PRIVATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          exec >/dev/null 2>> "$RUNNER_TEMP/r5-publish.log"
+          mkdir -p "$RUNNER_TEMP/ultra-output"
+          printf '%s\n' 'R5 build failed before successful IPA delivery.' 'Full build logs are attached privately when release permissions permit.' > "$RUNNER_TEMP/ultra-output/FAILURE.txt"
+          TAG="minis-max-r5-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}-diagnostic"
+          gh release create "$TAG" --repo "$PRIVATE_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 build diagnostics" --notes "Private diagnostic bundle only. This release does not contain a verified installable IPA." "$RUNNER_TEMP/ultra-output/FAILURE.txt" "$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt" "$RUNNER_TEMP/r5-private-build.log"
+          if [[ -s "$RUNNER_TEMP/minis-build.log" ]]; then gh release upload "$TAG" --repo "$PRIVATE_REPO" "$RUNNER_TEMP/minis-build.log"; fi
+          if [[ -s "$RUNNER_TEMP/r5-publish.log" ]]; then gh release upload "$TAG" --repo "$PRIVATE_REPO" "$RUNNER_TEMP/r5-publish.log"; fi
+          echo "R5 build failed. Diagnostic evidence was routed to the private repository when permitted." >> "$GITHUB_STEP_SUMMARY"
