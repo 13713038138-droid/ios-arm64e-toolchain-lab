@@ -62,6 +62,8 @@ class Tests(unittest.TestCase):
         api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text()
         self.assertIn('if id == "gpt-6.1-sol", model.supportsReasoning == nil', api)
         self.assertIn("model.supportsReasoning = true", api)
+        swift_tests = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text()
+        self.assertIn("guard let model = models.first else", swift_tests)
 
     def test_fails_closed_on_source_drift(self):
         root = self.tree()

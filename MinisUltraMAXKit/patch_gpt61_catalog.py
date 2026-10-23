@@ -90,9 +90,13 @@ def patch_tests(s):
         let data = Data(#"[{"id":"gpt-6.1-sol","display_name":"GPT-6.1-Sol"}]"#.utf8)
         let models = OpenAIModelsAPI.parseCodexModels(data)
         XCTAssertEqual(models.count, 1)
-        XCTAssertEqual(models.first?.supportsReasoning, true)
-        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: models[0], level: .low), "low")
-        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: models[0], level: .medium), "medium")
+        guard let model = models.first else {
+            XCTFail("Expected one model from the Codex discovery fixture")
+            return
+        }
+        XCTAssertEqual(model.supportsReasoning, true)
+        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .low), "low")
+        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .medium), "medium")
     }
 
 '''
@@ -137,7 +141,7 @@ def verify(root):
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
-        'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: models[0], level: .medium), "medium"' in x,
+        'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: model, level: .medium), "medium"' in x,
     ]
     if not all(checks):
         raise RuntimeError("NO-GO GPT61: post-patch source verification failed")
