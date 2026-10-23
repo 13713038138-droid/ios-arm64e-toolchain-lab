@@ -190,7 +190,23 @@ jobs:
           test -f "$APP/default_mount/usr/local/bin/minis-dev-ultra"
           test -f "$APP/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
           python3 "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" route --task "iOS arm64e Hook crash build" | grep -q '"primary_profile"'
+          python3 "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" hook --help | grep -q -- '--method'
+          python3 "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" route --task "Hook Objective-C class selector with verified method signature" | grep -Fq 'minis-dev-ultra hook --name HookName'
           MINIS_DEV_ULTRA_LIB="$APP/default_mount/usr/local/lib/minis-dev-ultra" "$APP/default_mount/usr/local/bin/minis-bin" "$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")" | grep -q '"kind": "macho64"'
+          BIN="$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
+          mkdir -p "$RUNNER_TEMP/ultra-output"
+          strings "$BIN" > "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
+          for marker in 'gpt-6.1-sol' 'GPT-6.1-Sol' '0.159.1'; do
+            grep -Fq "$marker" "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" || { echo "NO-GO: compiled binary is missing GPT-6.1 marker $marker"; exit 1; }
+          done
+          {
+            echo 'GPT-6.1-Sol compiled binary gate: PASS'
+            echo "Executable: $(basename "$BIN")"
+            grep -F 'gpt-6.1-sol' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
+            grep -F 'GPT-6.1-Sol' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
+            grep -F '0.159.1' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
+            shasum -a 256 "$BIN"
+          } > "$RUNNER_TEMP/ultra-output/GPT61_MODEL_GATE.txt"
           mkdir -p "$RUNNER_TEMP/ultra-output/Payload"
           ditto "$APP" "$RUNNER_TEMP/ultra-output/Payload/Minis.app"
           (cd "$RUNNER_TEMP/ultra-output" && zip -q -r MinisDevUltraMAX-UNSIGNED-BUILDONLY.ipa Payload)
@@ -265,7 +281,10 @@ jobs:
             echo "Pinned OpenMinis source commit: $SOURCE_COMMIT"
             echo "R5 isolated bundle ID: $MINIS_MAX_BUNDLE_ID"
             echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
-            echo 'GPT-6.1-Sol: Codex OAuth catalog + reasoning rule + Codex client Version 0.159.1 verified by source gate.'
+            echo 'GPT-6.1-Sol: Codex OAuth catalog + reasoning rule + Codex client Version 0.159.1 verified by source and compiled-binary gates.'
+            echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
+            echo 'Developer tools: 19 specialist references, automatic routing, token/log optimizer, Python bootstrap, static binary inspection, local DEB factory, ABI-v2 preflight, checkpoint journal, skill ZIP hardening and chat layout optimization.'
+            echo 'Not claimed: full native IDE, persistent background daemon, full Apple SDK download manager, C-function hook ABI inference or live ChatGPT entitlement validation.'
             echo 'Original Stheno source repositories were not checked out or modified.'
             echo 'Source manifest (SHA-256):'
             find "$GITHUB_WORKSPACE/MinisUltraMAXKit" -type f ! -path '*/__pycache__/*' -print | sort | while IFS= read -r f; do shasum -a 256 "$f"; done
@@ -287,7 +306,26 @@ jobs:
           test -s "$PROVENANCE"
           (cd "$(dirname "$IPA")" && shasum -a 256 "$(basename "$IPA")" > "$(basename "$SHA")")
           TAG="minis-max-r5-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
-          gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 — TrollStore test IPA" --notes "Public R5 test build. Install only as a separate TrollStore test app. Not an App Store-signed replacement; keep the original Minis app and its data intact." "$IPA" "$SHA" "$LIMITS" "$PROVENANCE"
+          MODEL_GATE="$RUNNER_TEMP/ultra-output/GPT61_MODEL_GATE.txt"
+          NOTES="$RUNNER_TEMP/ultra-output/RELEASE_NOTES.txt"
+          test -s "$MODEL_GATE"
+          cat > "$NOTES" <<'EOF'
+Minis Dev Ultra MAX R5.1 — isolated TrollStore test build
+
+Included:
+- GPT-6.1-Sol Codex OAuth picker entry, reasoning ceiling, Codex client Version 0.159.1 and compiled-binary marker gate.
+- HookLab slash command and evidence-first pass-through Logos scaffolding for verified Objective-C class methods.
+- Dev Ultra automatic task routing and 19 specialist references.
+- Token/log cost diagnostics, lazy Python 3 bootstrap, static IPA/DEB/Mach-O inspection, local Theos DEB build/verification, ABI-v2 preflight, resumable checkpoint journal.
+- Skill ZIP path/size hardening, App Group/FileProvider startup fallback protections, isolated R5 identity and chat visible-cell performance optimization.
+
+Important limits:
+- Install only as a separate TrollStore test app. This is not an Apple Developer-signed or App Store replacement. Keep the original Minis app and its data installed.
+- GPT-6.1-Sol can appear only if the signed-in ChatGPT/Codex account and backend expose it. The compiled catalog is verified; account entitlement and a live request still require testing with the user's account.
+- HookLab emits a pass-through starter, not proof the target class/method exists. It does not infer C-function prototypes or install packages automatically.
+- Full native IDE/editor, daemon-backed background jobs, full Apple SDK download management and full Apelin parity are not claimed.
+EOF
+          gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5.1 — GPT-6.1-Sol + HookLab" --notes-file "$NOTES" "$IPA" "$SHA" "$LIMITS" "$PROVENANCE" "$MODEL_GATE" "$NOTES"
           gh release upload "$TAG" --repo "$PUBLISH_REPO" "$RUNNER_TEMP/r5-build.log" "$RUNNER_TEMP/minis-build.log"
           echo "R5 IPA build completed. IPA and verification evidence were uploaded to the private R5 repository Release." >> "$GITHUB_STEP_SUMMARY"
 
