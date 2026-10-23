@@ -102,7 +102,7 @@ s = replace_once(s,
         }
         logAppUpdateMarkerForFPTrace()''', "FileProvider registration guard")
 s = replace_once(s,
-'''        let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.openminis.devultramax")!''',
+f'''        let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "{new_group}")!''',
 '''        guard let container = fm.containerURL(
             forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID
         ) else {
@@ -114,12 +114,12 @@ p.write_text(s, encoding="utf-8")
 p = extension
 s = p.read_text(encoding="utf-8")
 s = replace_once(s,
-'''        let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: "group.com.openminis.devultramax"
+f'''        let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "{new_group}"
         )!
         let url = container.appendingPathComponent("MinisFileProvider", isDirectory: true)''',
-'''        let shared = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: "group.com.openminis.devultramax"
+f'''        let shared = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "{new_group}"
         )
         let root = shared ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
             .appendingPathComponent("Library/MinisDevUltraExtensionIsolated", isDirectory: true)
@@ -261,6 +261,7 @@ helper = r'''enum ProviderKeychainHelper {
             return false
         }
     }'''
+helper = helper.replace("com.openminis.devultramax", bundle_id)
 ps = replace_once(ps, helper_anchor, helper, "MAX protected fallback helpers")
 
 sync_write = '        addQuery[kSecAttrSynchronizable as String] = true\n'
