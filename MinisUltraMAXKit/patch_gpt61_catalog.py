@@ -82,7 +82,25 @@ def patch_models_api(s):
             }
             return model
 '''
-    return replace_once(s, anchor, replacement, "Codex dynamic reasoning fallback")
+    s = replace_once(s, anchor, replacement, "Codex dynamic reasoning fallback")
+    call_anchor = "                let models = appendBuiltInImageModels(to: discovered)"
+    call_replacement = "                let withGPT61 = appendKnownGPT61SolIfFamilyAvailable(to: discovered)\n                let models = appendBuiltInImageModels(to: withGPT61)"
+    s = replace_once(s, call_anchor, call_replacement, "dynamic catalog GPT-6.1-Sol inclusion")
+    helper_anchor = "    /// [T-codex-image-models-survive-discovery] Add the built-in Codex image"
+    helper = '''    /// Keep the known GPT-6.1-Sol entry available when this account's authoritative
+    /// Codex catalog exposes another GPT-6 family model but omits the new sibling.
+    /// Do not inject it into unrelated providers or accounts with no GPT-6 access.
+    static func appendKnownGPT61SolIfFamilyAvailable(to discovered: [LLMModel]) -> [LLMModel] {
+        let ids = Set(discovered.map(\\.id))
+        guard !ids.contains(LLMModel.gpt61Sol.id) else { return discovered }
+        guard ids.contains("gpt-6-astra") || ids.contains("gpt-6-sol") || ids.contains("gpt-6-luna") else {
+            return discovered
+        }
+        return discovered + [LLMModel.gpt61Sol]
+    }
+
+'''
+    return replace_once(s, helper_anchor, helper + helper_anchor, "GPT-6.1-Sol dynamic catalog helper")
 
 def patch_tests(s):
 
@@ -141,7 +159,10 @@ def verify(root):
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
+        'appendKnownGPT61SolIfFamilyAvailable(to: discovered)' in api,
+        'return discovered + [LLMModel.gpt61Sol]' in api,
         'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: model, level: .medium), "medium"' in x,
+        'appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])' in x,
     ]
     if not all(checks):
         raise RuntimeError("NO-GO GPT61: post-patch source verification failed")
@@ -160,7 +181,7 @@ def main(argv=None):
         print("usage: python3 patch_gpt61_catalog.py /path/to/OpenMinis", file=sys.stderr)
         return 2
     apply(Path(argv[0]).resolve())
-    print("PASS GPT61: model ID, Codex OAuth picker, dynamic reasoning fallback, reasoning rule, 0.159.1 client gate and regression assertions")
+    print("PASS GPT61: model ID, dynamic Codex catalog inclusion, reasoning fallback, reasoning rule, 0.159.1 client gate and regression assertions")
     return 0
 
 if __name__ == "__main__":

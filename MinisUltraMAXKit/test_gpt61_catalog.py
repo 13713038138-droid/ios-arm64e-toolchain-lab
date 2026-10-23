@@ -24,8 +24,22 @@ API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
                 model.supportsReasoning = reasoning
             }
             return model
+        let models = appendBuiltInImageModels(to: discovered)
+    /// [T-codex-image-models-survive-discovery] Add the built-in Codex image
 '''
-TESTS = '''    func testBothAreOfferedOverCodexOAuth() {
+TESTS = '''    func testGPT61SolIsAppendedForGPT6OAuthCatalog() {
+        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])
+        XCTAssertEqual(result.filter { $0.id == "gpt-6.1-sol" }.count, 1)
+        XCTAssertEqual(result.last?.displayName, "GPT-6.1-Sol")
+        XCTAssertEqual(result.last?.supportsReasoning, true)
+    }
+
+    func testGPT61SolIsNotInjectedIntoUnrelatedOAuthCatalog() {
+        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt55])
+        XCTAssertFalse(result.contains { $0.id == "gpt-6.1-sol" })
+    }
+
+    func testBothAreOfferedOverCodexOAuth() {
         XCTAssertEqual(LLMModel.gpt6Luna.id, "gpt-6-luna")
         XCTAssertTrue(ids.contains("gpt-6-luna"))
         XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)
@@ -62,6 +76,8 @@ class Tests(unittest.TestCase):
         api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text()
         self.assertIn('if id == "gpt-6.1-sol", model.supportsReasoning == nil', api)
         self.assertIn("model.supportsReasoning = true", api)
+        self.assertIn("appendKnownGPT61SolIfFamilyAvailable(to: discovered)", api)
+        self.assertIn("return discovered + [LLMModel.gpt61Sol]", api)
         swift_tests = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text()
         self.assertIn("guard let model = models.first else", swift_tests)
 
