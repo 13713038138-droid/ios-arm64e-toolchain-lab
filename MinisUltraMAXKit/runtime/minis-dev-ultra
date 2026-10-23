@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+LIB="${MINIS_DEV_ULTRA_LIB:-/usr/local/lib/minis-dev-ultra}"
+. "$LIB/ensure-python3.sh"
+ensure_python3
+if [ "$#" -eq 0 ]; then
+  set -- doctor
+fi
+exec python3 "$LIB/devctl.py" "$@"

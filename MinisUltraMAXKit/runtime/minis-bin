@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+LIB="${MINIS_DEV_ULTRA_LIB:-/usr/local/lib/minis-dev-ultra}"
+. "$LIB/ensure-python3.sh"
+ensure_python3
+if [ "$#" -lt 1 ]; then
+  printf '%s\n' 'Usage: minis-bin <IPA|DEB|Mach-O|binary> [--out report.json]' >&2
+  exit 2
+fi
+exec python3 "$LIB/devctl.py" inspect "$@"

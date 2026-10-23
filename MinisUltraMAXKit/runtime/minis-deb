@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+LIB=/usr/local/lib/minis-dev-ultra
+if command -v printenv >/dev/null 2>&1 && printenv MINIS_DEV_ULTRA_LIB >/dev/null 2>&1; then
+  LIB="$(printenv MINIS_DEV_ULTRA_LIB)"
+fi
+. "$LIB/ensure-python3.sh"
+ensure_python3
+if [ "$#" -eq 0 ]; then
+  set -- auto
+fi
+exec python3 "$LIB/deb_factory.py" "$@"

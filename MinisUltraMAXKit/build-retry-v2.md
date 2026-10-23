@@ -1,0 +1,1 @@
+R2 macOS runner compatibility fix. Previous action 39624367846 failed at iSH VDSO cross linking: clang -fuse-ld=lld not found, fixed by installing lld and moving to macOS 26 with Xcode26. No changes to Stheno main branch or app signing identity.
