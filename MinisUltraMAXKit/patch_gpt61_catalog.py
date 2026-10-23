@@ -215,6 +215,14 @@ def patch_tests(s):
         XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .ultra), "max")
     }
 
+    func testGPT61SolThinkingOffFallsBackToLow() {
+        let provider = OpenAIProvider(apiKey: "test", model: .gpt61Sol)
+        XCTAssertEqual(
+            OpenAIAgentProvider.explicitOffEffort(for: provider, model: .gpt61Sol, level: .off),
+            "low"
+        )
+    }
+
     func testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint() {
         let provider = OpenAIProvider(apiKey: "test", model: .gpt61Sol)
         XCTAssertFalse(provider.usesChatCompletionsAPI)
