@@ -9,6 +9,12 @@ LLM = '''    static let gpt6Sol = LLMModel(
         provider: "OpenAI",
         supportsReasoning: true
     )
+    static let allOpenAI: [LLMModel] = [
+        .gpt54, .gpt52, .gpt5, .gpt41,
+        .gpt4o, .gpt4oMini,
+        .o3, .o4Mini,
+        .codexMini,
+    ]
     static let allOpenAICodexOAuth: [LLMModel] = [
         .gpt6Astra, .gpt6Sol, .gpt6Luna,
     ]
@@ -18,6 +24,10 @@ THINKING = '''    private static let rules: [(match: (String) -> Bool, max: Thin
     ]
 '''
 PROVIDER = '''    static let codexClientVersion = "0.155.0"
+    var usesChatCompletionsAPI: Bool {
+        if forceResponsesAPI { return false }
+        if !isOAuth { return true }
+    }
 '''
 API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
                 ?? (item["reasoning"] as? Bool) {
@@ -26,6 +36,13 @@ API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
             return model
                 let models = appendBuiltInImageModels(to: discovered)
     /// [T-codex-image-models-survive-discovery] Add the built-in Codex image
+        let byId = Dictionary(enriched.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return fresh.map { authoritative in
+            guard var merged = byId[authoritative.id] else { return authoritative }
+            if authoritative.contextWindow != nil { merged.contextWindow = authoritative.contextWindow }
+            if authoritative.maxOutputTokens != nil { merged.maxOutputTokens = authoritative.maxOutputTokens }
+            if authoritative.supportsReasoning != nil { merged.supportsReasoning = authoritative.supportsReasoning }
+            if authoritative.modalityOverride != nil { merged.modalityOverride = authoritative.modalityOverride }
 '''
 TESTS = '''    func testGPT61SolIsAppendedForGPT6OAuthCatalog() {
         let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])
@@ -71,15 +88,28 @@ class Tests(unittest.TestCase):
         root = self.tree()
         patch.apply(root)
         patch.verify(root)
-        self.assertIn('id: "gpt-6.1-sol"', (root / "src/ios/Providers/LLMTypes.swift").read_text())
-        self.assertIn('static let codexClientVersion = "0.159.1"', (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text())
+        types = (root / "src/ios/Providers/LLMTypes.swift").read_text()
+        self.assertIn('id: "gpt-6.1-sol"', types)
+        self.assertIn("contextWindow: 1_050_000", types)
+        self.assertIn("maxOutputTokens: 128_000", types)
+        self.assertIn('reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]', types)
+        self.assertIn(".gpt61Sol", types[types.index("static let allOpenAI: [LLMModel] ="):types.index("static let allOpenAICodexOAuth: [LLMModel] =")])
+        provider = (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text()
+        self.assertIn('static let codexClientVersion = "0.159.1"', provider)
+        self.assertIn('model.id.lowercased() == "gpt-6.1-sol"', provider)
+        self.assertIn("customBaseURL == nil, !isAzure", provider)
         api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text()
         self.assertIn('if id == "gpt-6.1-sol", model.supportsReasoning == nil', api)
         self.assertIn("model.supportsReasoning = true", api)
         self.assertIn("appendKnownGPT61SolIfFamilyAvailable(to: discovered)", api)
         self.assertIn("return discovered + [LLMModel.gpt61Sol]", api)
+        self.assertIn("var merged = byId[authoritative.id] ?? authoritative", api)
+        self.assertIn('if authoritative.id == "gpt-6.1-sol"', api)
+        self.assertIn("if authoritative.reasoningEffortValues != nil", api)
         swift_tests = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text()
         self.assertIn("guard let model = models.first else", swift_tests)
+        self.assertIn("testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint", swift_tests)
+        self.assertIn("testGPT61SolPreservesCustomEndpointRouting", swift_tests)
 
     def test_fails_closed_on_source_drift(self):
         root = self.tree()
