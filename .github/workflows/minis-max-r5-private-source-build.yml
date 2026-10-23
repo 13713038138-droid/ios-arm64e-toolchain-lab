@@ -1,5 +1,5 @@
 name: Minis Dev Ultra MAX R5 public-source IPA build
-# Re-trigger after prior queued run did not receive a hosted runner.
+# Re-trigger on current main after GPT-6.1 catalog fixture correction; use the established public macOS runner path.
 on:
   push:
     branches:
