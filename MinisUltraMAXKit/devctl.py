@@ -273,7 +273,7 @@ ROUTE_RULES = [
         "signals": [
             (r"fptrauth[-_ ]abi[-_ ]version.{0,12}2|abi[-_ ]v2|abi_v2|abi\s+v2", "explicit ABI-v2 acceptance gate"),
             (r"apple ci|xcode|workflow_dispatch|github actions|private repository|私有仓库|苹果构建|apple workflow", "Apple/Xcode CI workflow"),
-            (r"\br32\b|stheno.*abi|39485451658|source zip sha256", "R32 source provenance and historical CI"),
+            (r"\br32\b|project.*abi|historical-build|source zip sha256", "R32 source provenance and historical CI"),
         ],
         "specialists": ["ABI/PAC-review", "ios-build-packaging", "ci-release-audit"],
         "references": ["references/ios-release-factory.md", "references/ios-reverse-auditor.md"],
