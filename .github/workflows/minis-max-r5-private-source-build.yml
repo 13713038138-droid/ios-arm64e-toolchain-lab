@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: minis-max-r5-public-source-build-20261023
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
