@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/minis-max-r5-private-source-build.yml'
+      - 'MinisUltraMAXKit/**'
   workflow_dispatch:
 
 permissions:
