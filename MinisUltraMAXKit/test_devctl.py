@@ -35,6 +35,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn("ios_reverse_engineering", ids)
         self.assertIn("ios_build", ids)
         self.assertIn("minis-bin <IPA|DEB|Mach-O>", result["recommended_tools"])
+        self.assertTrue(any("minis-dev-ultra hook --name HookName" in x for x in result["recommended_tools"]))
         self.assertIn("minis-deb auto --project <path> --arch auto", result["recommended_tools"])
         self.assertIn("ABI/PAC-review", result["selected_specialists"])
         self.assertIn("references/ios-reverse-auditor.md", result["selected_references"])
@@ -174,6 +175,71 @@ class ScaffoldTests(unittest.TestCase):
                 devctl.cmd_new(argparse.Namespace(kind="tweak", name="ValidName",
                     bundle_id="com..escape", path=str(target), scheme="roothide", out=None))
             self.assertFalse(target.exists())
+
+
+
+def hook_scaffold(name, bundle_id, process, class_name, method, path, scheme="roothide"):
+    output = StringIO()
+    args = argparse.Namespace(name=name, bundle_id=bundle_id, process=process,
+        class_name=class_name, method=method, path=str(path), scheme=scheme, out=None)
+    with redirect_stdout(output):
+        devctl.cmd_hook(args)
+    return json.loads(output.getvalue())
+
+
+class HookLabTests(unittest.TestCase):
+    def test_creates_verified_void_method_passthrough(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td) / "HookProbe"
+            result = hook_scaffold("HookProbe", "com.example.hookprobe",
+                "com.example.target", "TargetController",
+                "- (void)setEnabled:(BOOL)enabled", target, "roothide")
+            self.assertEqual(result["status"], "CREATED_TEMPLATE_NOT_RUNTIME_VERIFIED")
+            self.assertIn("%hook TargetController", (target / "Tweak.xm").read_text())
+            self.assertIn("- (void)setEnabled:(BOOL)enabled {", (target / "Tweak.xm").read_text())
+            self.assertIn("%orig;", (target / "Tweak.xm").read_text())
+            self.assertIn('"com.example.target"', (target / "HookProbe.plist").read_text())
+            meta = json.loads((target / ".minis-dev-project.json").read_text())
+            self.assertEqual(meta["target_process_bundle_id"], "com.example.target")
+            self.assertIn("pass-through", (target / "README.md").read_text())
+
+    def test_returns_original_value_for_nonvoid_method(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td) / "HookProbe"
+            hook_scaffold("HookProbe", "com.example.hookprobe",
+                "com.example.target", "TargetController", "- (BOOL)isEnabled",
+                target, "rootless")
+            self.assertIn("return %orig;", (target / "Tweak.xm").read_text())
+            self.assertIn("ARCHS = arm64\n", (target / "Makefile").read_text())
+
+    def test_rejects_method_injection_and_unverified_class_syntax(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            for method in ("- (void)run { exit(0); }", "- (void)run;\n%ctor { }", "void run(void)"):
+                with self.subTest(method=method):
+                    with self.assertRaisesRegex(ValueError, "verified Objective-C method"):
+                        devctl.cmd_hook(argparse.Namespace(name="HookProbe",
+                            bundle_id="com.example.hookprobe", process="com.example.target",
+                            class_name="TargetController", method=method,
+                            path=str(base / "not-created"), scheme="roothide", out=None))
+            with self.assertRaisesRegex(ValueError, "class name"):
+                devctl.cmd_hook(argparse.Namespace(name="HookProbe",
+                    bundle_id="com.example.hookprobe", process="com.example.target",
+                    class_name="Target; %ctor", method="- (BOOL)isEnabled",
+                    path=str(base / "not-created"), scheme="roothide", out=None))
+            self.assertFalse((base / "not-created").exists())
+
+    def test_refuses_existing_output_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td) / "Existing"
+            target.mkdir()
+            (target / "keep.txt").write_text("keep")
+            with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):
+                devctl.cmd_hook(argparse.Namespace(name="HookProbe",
+                    bundle_id="com.example.hookprobe", process="com.example.target",
+                    class_name="TargetController", method="- (BOOL)isEnabled",
+                    path=str(target), scheme="roothide", out=None))
+            self.assertEqual((target / "keep.txt").read_text(), "keep")
 
 
 class BinaryTests(unittest.TestCase):

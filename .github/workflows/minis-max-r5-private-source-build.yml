@@ -99,6 +99,8 @@ jobs:
           grep -q 'decodedTotal' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
           grep -q 'installBundledUltraSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
           grep -q 'case "devmax"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'case "devhook"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'minis-dev-ultra hook --name NAME' "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
           grep -q '^## Specialist references' "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
           test "$(find "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/references" -name '*.md' | wc -l | tr -d ' ')" = 19

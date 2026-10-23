@@ -32,3 +32,8 @@ This is a first parity slice, not full Apelin parity. A native editor UI, on-dev
 - R5 uses a separate `com.openminis.devultramax.r5` identity and `group.com.openminis.devultramax.r5` namespace so the R4 test clone remains a rollback baseline.
 - CI must pass Python compile, unit tests, shell wrapper tests, patch source guards, Xcode build, isolated ad-hoc signature verification, artifact checksum and provenance.
 - CI success is not device validation. R5 must be installed/tested separately in TrollStore before being considered accepted.
+
+
+## HookLab: verified Objective-C hook scaffolding
+
+R5.1 adds a dedicated devhook slash entry and minis-dev-ultra hook command. The generator requires a verified target bundle, Objective-C runtime class and exact single-line method declaration. It writes a new Theos/Logos project with a pass-through %orig hook and a bundle filter, refuses existing paths, and never installs the package. The generated project is a starting point only: static/runtime evidence, a clean build and device load/crash testing are still required. C function hooks are intentionally not generated because their full prototype, calling convention and ABI must be proven independently. This makes hook work more repeatable without fabricating symbols or silently changing a target's behavior.
