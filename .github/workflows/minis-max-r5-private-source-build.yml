@@ -303,7 +303,7 @@ jobs:
           PROVENANCE="$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt"
           test -s "$IPA"
           test -s "$PROVENANCE"
-          shasum -a 256 "$IPA" > "$SHA"
+          (cd "$(dirname "$IPA")" && shasum -a 256 "$(basename "$IPA")" > "$(basename "$SHA")")
           TAG="minis-max-r5-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" --repo "$PRIVATE_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5 — TrollStore test IPA" --notes "Private R5 test build. Install only as a separate TrollStore test app. Not an App Store-signed replacement; keep the original Minis app and its data intact." "$IPA" "$SHA" "$LIMITS" "$PROVENANCE"
           gh release upload "$TAG" --repo "$PRIVATE_REPO" "$RUNNER_TEMP/r5-private-build.log" "$RUNNER_TEMP/minis-build.log"
