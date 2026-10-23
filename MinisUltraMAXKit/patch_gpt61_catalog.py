@@ -100,6 +100,20 @@ def patch_provider(s):
         "GPT-6.1 Sol official Responses API routing")
 
 
+def patch_agent(s):
+    anchor = '''        guard !level.isEnabled else { return nil }
+        if provider.customBaseURL == nil && !provider.isAzure { return "none" }
+        let base = provider.customBaseURL?.lowercased() ?? ""
+        let lid = model.id.lowercased()'''
+    replacement = '''        guard !level.isEnabled else { return nil }
+        let base = provider.customBaseURL?.lowercased() ?? ""
+        let lid = model.id.lowercased()
+        // GPT-6.1 Sol rejects "none"/"minimal"; OFF uses its lowest valid tier.
+        if lid == "gpt-6.1-sol" { return "low" }
+        if provider.customBaseURL == nil && !provider.isAzure { return "none" }'''
+    return replace_once(s, anchor, replacement, "GPT-6.1 Sol thinking OFF clamp")
+
+
 def patch_models_api(s):
     anchor = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
                 ?? (item["reasoning"] as? Bool) {
@@ -252,6 +266,7 @@ def verify(root):
     t = (root / "src/ios/Providers/LLMTypes.swift").read_text(encoding="utf-8")
     c = (root / "src/ios/Providers/ThinkingLevelCatalog.swift").read_text(encoding="utf-8")
     p = (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text(encoding="utf-8")
+    agent = (root / "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift").read_text(encoding="utf-8")
     x = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text(encoding="utf-8")
     api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text(encoding="utf-8")
     all_openai_start = t.index('static let allOpenAI: [LLMModel] = [')
@@ -268,6 +283,7 @@ def verify(root):
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
         'static let codexClientVersion = "0.159.1"' in p,
         'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
+        'if lid == "gpt-6.1-sol" { return "low" }' in agent,
         'XCTAssertTrue(ids.contains("gpt-6.1-sol"))' in x and 'LLMModel.gpt61Sol' in x,
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
@@ -289,6 +305,7 @@ def apply(root):
     edit(root, "src/ios/Providers/LLMTypes.swift", patch_types)
     edit(root, "src/ios/Providers/ThinkingLevelCatalog.swift", patch_thinking)
     edit(root, "src/ios/Providers/OpenAI/OpenAIProvider.swift", patch_provider)
+    edit(root, "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift", patch_agent)
     edit(root, "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift", patch_models_api)
     edit(root, "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift", patch_tests)
     verify(root)
@@ -299,7 +316,7 @@ def main(argv=None):
         print("usage: python3 patch_gpt61_catalog.py /path/to/OpenMinis", file=sys.stderr)
         return 2
     apply(Path(argv[0]).resolve())
-    print("PASS GPT61: retained model ID, Responses routing, 1.05M/128K metadata, effort ladder, live catalog fallback and regression assertions")
+    print("PASS GPT61: retained model ID, Responses routing, OFF-to-low clamp, 1.05M/128K metadata, effort ladder, live catalog fallback and regression assertions")
     return 0
 
 if __name__ == "__main__":
