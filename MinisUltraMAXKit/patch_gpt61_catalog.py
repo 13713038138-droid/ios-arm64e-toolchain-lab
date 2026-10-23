@@ -28,16 +28,36 @@ def patch_types(s):
     )
 '''
     entry = '''    /// GPT-6.1 Sol is available through Codex OAuth on eligible ChatGPT accounts.
-    /// Declare reasoning explicitly because models.dev may not yet know this ID.
+    /// Keep static metadata authoritative when the live catalog omits these fields.
     static let gpt61Sol = LLMModel(
         id: "gpt-6.1-sol",
         displayName: "GPT-6.1-Sol",
         provider: "OpenAI",
-        supportsReasoning: true
+        contextWindow: 1_050_000,
+        maxOutputTokens: 128_000,
+        supportsReasoning: true,
+        reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]
     )
 
 '''
     s = replace_once(s, anchor, entry + anchor, "model definition")
+    s = replace_once(
+        s,
+        '''    static let allOpenAI: [LLMModel] = [
+        .gpt54, .gpt52, .gpt5, .gpt41,
+        .gpt4o, .gpt4oMini,
+        .o3, .o4Mini,
+        .codexMini,
+    ]''',
+        '''    static let allOpenAI: [LLMModel] = [
+        .gpt61Sol,
+        .gpt54, .gpt52, .gpt5, .gpt41,
+        .gpt4o, .gpt4oMini,
+        .o3, .o4Mini,
+        .codexMini,
+    ]''',
+        "OpenAI API-key fallback model list",
+    )
     return replace_once(s, "        .gpt6Astra, .gpt6Sol, .gpt6Luna,",
                         "        .gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,",
                         "Codex OAuth model list")
@@ -53,7 +73,7 @@ def patch_thinking(s):
         "thinking-level rule")
 
 def patch_provider(s):
-    return replace_once(
+    s = replace_once(
         s,
         '    static let codexClientVersion = "0.155.0"',
         '''    // GPT-6.1 Sol is withheld from the Codex model catalog for client versions
@@ -61,6 +81,23 @@ def patch_provider(s):
     // that includes the model. This value feeds discovery and request headers.
     static let codexClientVersion = "0.159.1"''',
         "Codex client-version gate")
+    return replace_once(
+        s,
+        '''    var usesChatCompletionsAPI: Bool {
+        if forceResponsesAPI { return false }
+        if !isOAuth { return true }''',
+        '''    var usesChatCompletionsAPI: Bool {
+        if forceResponsesAPI { return false }
+        // Keep this ID on a live request-routing path so the shipped binary
+        // proves the GPT-6.1 patch was linked, not merely present in source.
+        // Official OpenAI API-key requests use Responses; custom/Azure endpoints
+        // retain their existing routing.
+        if model.id.lowercased() == "gpt-6.1-sol",
+           customBaseURL == nil, !isAzure {
+            return false
+        }
+        if !isOAuth { return true }''',
+        "GPT-6.1 Sol official Responses API routing")
 
 
 def patch_models_api(s):
@@ -100,7 +137,45 @@ def patch_models_api(s):
     }
 
 '''
-    return replace_once(s, helper_anchor, helper + helper_anchor, "GPT-6.1-Sol dynamic catalog helper")
+    s = replace_once(s, helper_anchor, helper + helper_anchor, "GPT-6.1-Sol dynamic catalog helper")
+    merge_anchor = '''        let byId = Dictionary(enriched.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return fresh.map { authoritative in
+            guard var merged = byId[authoritative.id] else { return authoritative }
+            if authoritative.contextWindow != nil { merged.contextWindow = authoritative.contextWindow }
+            if authoritative.maxOutputTokens != nil { merged.maxOutputTokens = authoritative.maxOutputTokens }
+            if authoritative.supportsReasoning != nil { merged.supportsReasoning = authoritative.supportsReasoning }
+            if authoritative.modalityOverride != nil { merged.modalityOverride = authoritative.modalityOverride }'''
+    merge_replacement = '''        let byId = Dictionary(enriched.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let builtInById = Dictionary(LLMModel.allOpenAICodexOAuth.map { ($0.id, $0) },
+                                     uniquingKeysWith: { a, _ in a })
+        return fresh.map { authoritative in
+            // Preserve live-only models when models.dev has no matching record.
+            var merged = byId[authoritative.id] ?? authoritative
+            if let builtIn = builtInById[authoritative.id] {
+                if merged.contextWindow == nil { merged.contextWindow = builtIn.contextWindow }
+                if merged.maxOutputTokens == nil { merged.maxOutputTokens = builtIn.maxOutputTokens }
+                if merged.supportsReasoning == nil { merged.supportsReasoning = builtIn.supportsReasoning }
+                if merged.reasoningEffortValues == nil { merged.reasoningEffortValues = builtIn.reasoningEffortValues }
+                if merged.declaresNoEffortTiers == nil { merged.declaresNoEffortTiers = builtIn.declaresNoEffortTiers }
+                if merged.modalityOverride == nil { merged.modalityOverride = builtIn.modalityOverride }
+            }
+            if authoritative.contextWindow != nil { merged.contextWindow = authoritative.contextWindow }
+            if authoritative.maxOutputTokens != nil { merged.maxOutputTokens = authoritative.maxOutputTokens }
+            if authoritative.supportsReasoning != nil { merged.supportsReasoning = authoritative.supportsReasoning }
+            if authoritative.modalityOverride != nil { merged.modalityOverride = authoritative.modalityOverride }
+            if authoritative.reasoningEffortValues != nil { merged.reasoningEffortValues = authoritative.reasoningEffortValues }
+            if authoritative.declaresNoEffortTiers != nil { merged.declaresNoEffortTiers = authoritative.declaresNoEffortTiers }
+            // Prefer the pinned GPT-6.1 Sol definition over stale models.dev
+            // values whenever the live endpoint omits a field.
+            if authoritative.id == "gpt-6.1-sol" {
+                let sol = LLMModel.gpt61Sol
+                if authoritative.contextWindow == nil { merged.contextWindow = sol.contextWindow }
+                if authoritative.maxOutputTokens == nil { merged.maxOutputTokens = sol.maxOutputTokens }
+                if authoritative.supportsReasoning == nil { merged.supportsReasoning = sol.supportsReasoning }
+                if authoritative.reasoningEffortValues == nil { merged.reasoningEffortValues = sol.reasoningEffortValues }
+                if authoritative.declaresNoEffortTiers == nil { merged.declaresNoEffortTiers = sol.declaresNoEffortTiers }
+            }'''
+    return replace_once(s, merge_anchor, merge_replacement, "GPT-6.1 model metadata fallback")
 
 def patch_tests(s):
 
@@ -115,6 +190,26 @@ def patch_tests(s):
         XCTAssertEqual(model.supportsReasoning, true)
         XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .low), "low")
         XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .medium), "medium")
+    }
+
+    func testGPT61SolHasPinnedMetadataAndEffortLadder() {
+        let model = LLMModel.gpt61Sol
+        XCTAssertEqual(model.contextWindow, 1_050_000)
+        XCTAssertEqual(model.maxOutputTokens, 128_000)
+        XCTAssertEqual(model.reasoningEffortValues ?? [], ["low", "medium", "high", "xhigh", "max"])
+        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .max), "max")
+        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .ultra), "max")
+    }
+
+    func testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint() {
+        let provider = OpenAIProvider(apiKey: "test", model: .gpt61Sol)
+        XCTAssertFalse(provider.usesChatCompletionsAPI)
+    }
+
+    func testGPT61SolPreservesCustomEndpointRouting() {
+        let provider = OpenAIProvider(apiKey: "test", model: .gpt61Sol,
+                                      customBaseURL: "https://example.invalid")
+        XCTAssertTrue(provider.usesChatCompletionsAPI)
     }
 
     func testGPT61SolIsAppendedWhenCodexCatalogHasGPT6Family() {
@@ -159,22 +254,33 @@ def verify(root):
     p = (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text(encoding="utf-8")
     x = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text(encoding="utf-8")
     api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text(encoding="utf-8")
+    all_openai_start = t.index('static let allOpenAI: [LLMModel] = [')
+    all_codex_start = t.index('static let allOpenAICodexOAuth: [LLMModel] = [')
     checks = [
         t.count('id: "gpt-6.1-sol"') == 1,
         t.count('displayName: "GPT-6.1-Sol"') == 1,
         'static let gpt61Sol = LLMModel(' in t and
             'supportsReasoning: true' in t[t.index('static let gpt61Sol'):t.index('static let gpt6Sol')],
+        'contextWindow: 1_050_000' in t and 'maxOutputTokens: 128_000' in t,
+        'reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]' in t,
+        '.gpt61Sol' in t[all_openai_start:all_codex_start],
         '.gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,' in t,
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
         'static let codexClientVersion = "0.159.1"' in p,
+        'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
         'XCTAssertTrue(ids.contains("gpt-6.1-sol"))' in x and 'LLMModel.gpt61Sol' in x,
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
         'appendKnownGPT61SolIfFamilyAvailable(to: discovered)' in api,
         'return discovered + [LLMModel.gpt61Sol]' in api,
+        'let builtInById = Dictionary(LLMModel.allOpenAICodexOAuth.map' in api,
+        'if authoritative.id == "gpt-6.1-sol"' in api,
+        'if authoritative.reasoningEffortValues != nil' in api,
         'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: model, level: .medium), "medium"' in x,
         'appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])' in x,
+        'testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint' in x,
+        'testGPT61SolPreservesCustomEndpointRouting' in x,
     ]
     if not all(checks):
         raise RuntimeError("NO-GO GPT61: post-patch source verification failed")
@@ -193,7 +299,7 @@ def main(argv=None):
         print("usage: python3 patch_gpt61_catalog.py /path/to/OpenMinis", file=sys.stderr)
         return 2
     apply(Path(argv[0]).resolve())
-    print("PASS GPT61: model ID, dynamic Codex catalog inclusion, reasoning fallback, reasoning rule, 0.159.1 client gate and regression assertions")
+    print("PASS GPT61: retained model ID, Responses routing, 1.05M/128K metadata, effort ladder, live catalog fallback and regression assertions")
     return 0
 
 if __name__ == "__main__":
