@@ -59,6 +59,7 @@ jobs:
           python3 --version
           python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_taskctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
           for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
@@ -85,6 +86,7 @@ jobs:
           python3 --version
           python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_taskctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
           for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
@@ -119,6 +121,7 @@ jobs:
           python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_tk_optimizer.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_taskctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
           sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
