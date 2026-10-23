@@ -38,7 +38,7 @@ class BuildPlanTests(unittest.TestCase):
         self.assertEqual(plan["scheme_source"], "project Makefile; preserved")
         self.assertNotIn("ARCHS=arm64 arm64e", plan["make_args"])
         self.assertFalse(any(x.startswith("THEOS_PACKAGE_SCHEME=") for x in plan["make_args"]))
-        self.assertIn("ldid -S", plan["signing"])
+        self.assertEqual(plan["signing"], "Theos TARGET_CODESIGN pipeline; ldid")
 
     def test_auto_arch_uses_modern_dual_arch_default_without_overriding_makefile(self):
         (self.project / "Makefile").write_text("include $(THEOS)/makefiles/common.mk\n")
