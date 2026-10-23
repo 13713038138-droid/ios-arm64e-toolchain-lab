@@ -196,13 +196,22 @@ jobs:
           MINIS_DEV_ULTRA_LIB="$APP/default_mount/usr/local/lib/minis-dev-ultra" "$APP/default_mount/usr/local/bin/minis-bin" "$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")" | grep -q '"kind": "macho64"'
           BIN="$APP/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
           mkdir -p "$RUNNER_TEMP/ultra-output"
-          strings -a "$BIN" > "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
+          # Check the actual app executable and embedded framework executables.
+          # Swift may place provider code in an embedded binary, so scan all Mach-O files,
+          # but keep a strict NO-GO if any required marker is absent from the shipped app.
+          : > "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
+          while IFS= read -r -d '' candidate; do
+            if file "$candidate" | grep -q 'Mach-O'; then
+              printf '\\n===== %s =====\\n' "${candidate#"$APP"/}" >> "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
+              strings -a "$candidate" >> "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
+            fi
+          done < <(find "$APP" -type f -print0)
           for marker in 'gpt-6.1-sol' 'GPT-6.1-Sol' '0.159.1'; do
-            grep -Fq "$marker" "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" || { echo "NO-GO: compiled binary is missing GPT-6.1 marker $marker"; exit 1; }
+            grep -Fq "$marker" "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" || { echo "NO-GO: shipped app Mach-O files are missing GPT-6.1 marker $marker"; exit 1; }
           done
           {
-            echo 'GPT-6.1-Sol compiled binary gate: PASS'
-            echo "Executable: $(basename "$BIN")"
+            echo 'GPT-6.1-Sol shipped Mach-O binary gate: PASS'
+            echo "Main executable: $(basename "$BIN")"
             grep -F 'gpt-6.1-sol' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
             grep -F 'GPT-6.1-Sol' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
             grep -F '0.159.1' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
