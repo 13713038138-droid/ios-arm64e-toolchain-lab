@@ -19,7 +19,14 @@ THINKING = '''    private static let rules: [(match: (String) -> Bool, max: Thin
 '''
 PROVIDER = '''    static let codexClientVersion = "0.155.0"
 '''
-TESTS = '''        XCTAssertEqual(LLMModel.gpt6Luna.id, "gpt-6-luna")
+API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
+                ?? (item["reasoning"] as? Bool) {
+                model.supportsReasoning = reasoning
+            }
+            return model
+'''
+TESTS = '''    func testBothAreOfferedOverCodexOAuth() {
+        XCTAssertEqual(LLMModel.gpt6Luna.id, "gpt-6-luna")
         XCTAssertTrue(ids.contains("gpt-6-luna"))
         XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)
         for m in [LLMModel.gpt6Sol, LLMModel.gpt6Luna] {
@@ -37,6 +44,7 @@ class Tests(unittest.TestCase):
             "src/ios/Providers/LLMTypes.swift": LLM,
             "src/ios/Providers/ThinkingLevelCatalog.swift": THINKING,
             "src/ios/Providers/OpenAI/OpenAIProvider.swift": PROVIDER,
+            "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift": API,
             "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift": TESTS,
         }
         for rel, content in data.items():
@@ -51,6 +59,9 @@ class Tests(unittest.TestCase):
         patch.verify(root)
         self.assertIn('id: "gpt-6.1-sol"', (root / "src/ios/Providers/LLMTypes.swift").read_text())
         self.assertIn('static let codexClientVersion = "0.159.1"', (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text())
+        api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text()
+        self.assertIn('if id == "gpt-6.1-sol", model.supportsReasoning == nil', api)
+        self.assertIn("model.supportsReasoning = true", api)
 
     def test_fails_closed_on_source_drift(self):
         root = self.tree()

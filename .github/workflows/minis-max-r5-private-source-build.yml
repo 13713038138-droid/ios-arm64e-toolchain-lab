@@ -90,6 +90,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_skill_archive.py" "$RUNNER_TEMP/OpenMinis"
           MINIS_MAX_BUNDLE_ID="$MINIS_MAX_BUNDLE_ID" python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_ips_sigtrap.py" "$RUNNER_TEMP/OpenMinis"
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_gpt61_catalog.py" "$RUNNER_TEMP/OpenMinis"
+          grep -q 'if id == "gpt-6.1-sol", model.supportsReasoning == nil' "$RUNNER_TEMP/OpenMinis/src/ios/Providers/OpenAI/OpenAIModelsAPI.swift"
           MINIS_MAX_BUNDLE_ID="$MINIS_MAX_BUNDLE_ID" python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_ips_sigtrap.py" "$RUNNER_TEMP/OpenMinis"
           grep -q "minisIsolatedContainerBase" "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+RequestBudget.swift"
           grep -q "FileProvider registration skipped" "$RUNNER_TEMP/OpenMinis/src/ios/MinisApp.swift"
@@ -281,7 +282,7 @@ jobs:
             echo "Pinned OpenMinis source commit: $SOURCE_COMMIT"
             echo "R5 isolated bundle ID: $MINIS_MAX_BUNDLE_ID"
             echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
-            echo 'GPT-6.1-Sol: Codex OAuth catalog + reasoning rule + Codex client Version 0.159.1 verified by source and compiled-binary gates.'
+            echo 'GPT-6.1-Sol: Codex OAuth catalog + dynamic-response reasoning fallback + reasoning rule + Codex client Version 0.159.1 verified by source and compiled-binary gates.'
             echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
             echo 'Developer tools: 19 specialist references, automatic routing, token/log optimizer, Python bootstrap, static binary inspection, local DEB factory, ABI-v2 preflight, checkpoint journal, skill ZIP hardening and chat layout optimization.'
             echo 'Not claimed: full native IDE, persistent background daemon, full Apple SDK download manager, C-function hook ABI inference or live ChatGPT entitlement validation.'
@@ -315,7 +316,7 @@ jobs:
           Minis Dev Ultra MAX R5.2 — isolated TrollStore test build
           
           Included:
-          - GPT-6.1-Sol Codex OAuth picker entry, reasoning ceiling, Codex client Version 0.159.1 and compiled-binary marker gate.
+          - GPT-6.1-Sol Codex OAuth picker entry, dynamic-response reasoning fallback when the backend omits the flag, reasoning ceiling, Codex client Version 0.159.1 and compiled-binary marker gate.
           - HookLab slash command and evidence-first pass-through Logos scaffolding for verified Objective-C class methods.
           - Dev Ultra automatic task routing and 19 specialist references.
           - Token/log cost diagnostics, lazy Python 3 bootstrap, static IPA/DEB/Mach-O inspection, local Theos DEB build/verification, ABI-v2 preflight, resumable checkpoint journal.

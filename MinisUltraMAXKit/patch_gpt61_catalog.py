@@ -62,7 +62,43 @@ def patch_provider(s):
     static let codexClientVersion = "0.159.1"''',
         "Codex client-version gate")
 
+
+def patch_models_api(s):
+    anchor = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
+                ?? (item["reasoning"] as? Bool) {
+                model.supportsReasoning = reasoning
+            }
+            return model
+'''
+    replacement = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
+                ?? (item["reasoning"] as? Bool) {
+                model.supportsReasoning = reasoning
+            }
+            // GPT-6.1 Sol can be present in the authoritative Codex list while
+            // older response shapes omit the reasoning flag. Fill only nil;
+            // never override an explicit backend false.
+            if id == "gpt-6.1-sol", model.supportsReasoning == nil {
+                model.supportsReasoning = true
+            }
+            return model
+'''
+    return replace_once(s, anchor, replacement, "Codex dynamic reasoning fallback")
+
 def patch_tests(s):
+
+    dynamic_test = '''    func testCodexDiscoveryGPT61DeclaresReasoningWhenBackendOmitsFlag() {
+        let data = Data(#"[{"id":"gpt-6.1-sol","display_name":"GPT-6.1-Sol"}]"#.utf8)
+        let models = OpenAIModelsAPI.parseCodexModels(data)
+        XCTAssertEqual(models.count, 1)
+        XCTAssertEqual(models.first?.supportsReasoning, true)
+        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: models[0], level: .low), "low")
+        XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: models[0], level: .medium), "medium")
+    }
+
+'''
+    s = replace_once(s, "    func testBothAreOfferedOverCodexOAuth() {",
+                    dynamic_test + "    func testBothAreOfferedOverCodexOAuth() {",
+                    "dynamic Codex model reasoning test")
     s = replace_once(s, '        XCTAssertEqual(LLMModel.gpt6Luna.id, "gpt-6-luna")',
         '        XCTAssertEqual(LLMModel.gpt6Luna.id, "gpt-6-luna")\n'
         '        XCTAssertEqual(LLMModel.gpt61Sol.supportsReasoning, true)\n'
@@ -88,6 +124,7 @@ def verify(root):
     c = (root / "src/ios/Providers/ThinkingLevelCatalog.swift").read_text(encoding="utf-8")
     p = (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text(encoding="utf-8")
     x = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text(encoding="utf-8")
+    api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text(encoding="utf-8")
     checks = [
         t.count('id: "gpt-6.1-sol"') == 1,
         t.count('displayName: "GPT-6.1-Sol"') == 1,
@@ -98,6 +135,9 @@ def verify(root):
         'static let codexClientVersion = "0.159.1"' in p,
         'XCTAssertTrue(ids.contains("gpt-6.1-sol"))' in x and 'LLMModel.gpt61Sol' in x,
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
+        'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
+        'model.supportsReasoning = true' in api,
+        'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: models[0], level: .medium), "medium"' in x,
     ]
     if not all(checks):
         raise RuntimeError("NO-GO GPT61: post-patch source verification failed")
@@ -106,6 +146,7 @@ def apply(root):
     edit(root, "src/ios/Providers/LLMTypes.swift", patch_types)
     edit(root, "src/ios/Providers/ThinkingLevelCatalog.swift", patch_thinking)
     edit(root, "src/ios/Providers/OpenAI/OpenAIProvider.swift", patch_provider)
+    edit(root, "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift", patch_models_api)
     edit(root, "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift", patch_tests)
     verify(root)
 
@@ -115,7 +156,7 @@ def main(argv=None):
         print("usage: python3 patch_gpt61_catalog.py /path/to/OpenMinis", file=sys.stderr)
         return 2
     apply(Path(argv[0]).resolve())
-    print("PASS GPT61: model ID, Codex OAuth picker, reasoning rule, 0.159.1 client gate and regression assertions")
+    print("PASS GPT61: model ID, Codex OAuth picker, dynamic reasoning fallback, reasoning rule, 0.159.1 client gate and regression assertions")
     return 0
 
 if __name__ == "__main__":
