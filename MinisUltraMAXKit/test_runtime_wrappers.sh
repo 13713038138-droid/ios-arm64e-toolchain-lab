@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 RUNTIME="$ROOT/runtime"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
