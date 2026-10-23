@@ -1,5 +1,10 @@
 name: Minis Dev Ultra MAX R5 private-source IPA build
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/minis-max-r5-private-source-build.yml'
   workflow_dispatch:
 
 permissions:
