@@ -117,6 +117,18 @@ def patch_tests(s):
         XCTAssertEqual(OpenAIAgentProvider.reasoningEffort(for: model, level: .medium), "medium")
     }
 
+    func testGPT61SolIsAppendedWhenCodexCatalogHasGPT6Family() {
+        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])
+        XCTAssertEqual(result.filter { $0.id == "gpt-6.1-sol" }.count, 1)
+        XCTAssertEqual(result.last?.displayName, "GPT-6.1-Sol")
+        XCTAssertEqual(result.last?.supportsReasoning, true)
+    }
+
+    func testGPT61SolIsNotAppendedToUnrelatedCodexCatalog() {
+        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt55])
+        XCTAssertFalse(result.contains { $0.id == "gpt-6.1-sol" })
+    }
+
 '''
     s = replace_once(s, "    func testBothAreOfferedOverCodexOAuth() {",
                     dynamic_test + "    func testBothAreOfferedOverCodexOAuth() {",
