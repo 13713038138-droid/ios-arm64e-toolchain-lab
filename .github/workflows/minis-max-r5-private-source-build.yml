@@ -254,34 +254,15 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/ultra-output"
           {
-            echo 'R5 base: verified R4 build commit 7ba777db82c85b9b01facc5cc62817db8f88b4a2'
-            echo 'R5 automatic router blob SHA: 17ad787c0d3a9e38fd3ae74ef6369535581ffde7'
-            echo 'R5 binary wrapper blob SHA: 98dfbfa390cdf5d4069dea0070e69eed345311c3'
-            echo 'R5 local DEB factory blob SHA: bd6e854164c691097aabc69085b322ac33bf5c1b'
-            echo 'R5 local DEB unit tests blob SHA: 527dcbcac9b484db67ecf2bd2106d239c1e33f2c'
-            echo 'R5 local DEB wrapper blob SHA: c3ee568ca85d272288a372b9071995074fe0114d'
-            echo 'R5 wrapper test blob SHA: ffab29b673480a83313c80ef976e3b975d0f4616'
-            echo 'R5 route tests blob SHA: 69b73c0cfe631e7499c9202c5659f0914a2f684e'
-            echo 'R5 release reference blob SHA: 6c187735b7f67c9d41317c2a060c62762cb367d6'
-            echo 'R5 local DEB factory documentation blob SHA: c15f6c46b2a3f597746cb71910390e142e908a60'
-            echo 'R5 R32 ABI-v2 gate blob SHA: 4b3e517539e97e3f5633583c19d70349b59fc55b'
-            echo 'R5 R32 ABI-v2 unit tests blob SHA: 162c7469363e6309a93e1b671d156e0969ca7e7c'
-            echo 'R5 R32 ABI-v2 wrapper blob SHA: e31829e111ece4d66cfb2c372abd4b7f9738f19a'
-            echo 'R5 R32 ABI-v2 wrapper tests blob SHA: 8f2b3b559f0428d4068bc2bb80b3e827ed5617e4'
-            echo 'R5 R32 ABI-v2 docs blob SHA: 225c6813763233e7cd62b15db5863248b4f13bda'
-            echo 'R5 R32 ABI-v2 route blob SHA: 06c8c513cc312c2b4e3e585c6de31e0bef815bc3'
-            echo 'R5 R32 ABI-v2 route tests blob SHA: a5b5faeb496a488c29ab29bd1c280a26e8a55f5c'
-            echo 'R5 runtime integration blob SHA: b7529e39b656aa0cfdd87adab70ee3952a7e23e8'
-            echo 'R5 Python bootstrap blob SHA: de8834dbdbde86932c1b8fa8ec5ca17ffa39df8d'
-            echo 'R5 initial integration blob SHA: 221629216b91bc441648cd2b43ac6c205d1a0c97'
-            echo 'R5 patch identity blob SHA: dfb844f2dc10eb44c4966e05e21986cf3d444221'
-            echo 'R5 identity test blob SHA: f9e29f9699129092fabfc8b2fca3bde2b4edf7a2'
-            echo 'R5 router unit test blob SHA: 69b73c0cfe631e7499c9202c5659f0914a2f684e'
-            echo 'R5 isolated bundle ID: com.openminis.devultramax.r5'
-            echo 'Pinned OpenMinis source commit: b4c0661d5631ebab4d1a2e6f3fd4c805d4030a6c'
-            echo "Public R5 source commit: $SOURCE_SHA"
-            echo "Public runner workflow commit: $GITHUB_SHA"
-            echo 'Build: iOS 1.15.1 (20), isolated R5 identity, ad-hoc signature for TrollStore testing only'
+            echo 'Build: Minis Dev Ultra MAX R5, isolated bundle identity'
+            echo "Public source commit: $SOURCE_SHA"
+            echo "Public workflow commit: $GITHUB_SHA"
+            echo "Pinned OpenMinis source commit: $SOURCE_COMMIT"
+            echo "R5 isolated bundle ID: $MINIS_MAX_BUNDLE_ID"
+            echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
+            echo 'Original Stheno source repositories were not checked out or modified.'
+            echo 'Source manifest (SHA-256):'
+            find "$GITHUB_WORKSPACE/MinisUltraMAXKit" -type f ! -path '*/__pycache__/*' -print | sort | while IFS= read -r f; do shasum -a 256 "$f"; done
           } > "$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt"
 
       - name: Publish successful IPA and evidence to public R5 release
