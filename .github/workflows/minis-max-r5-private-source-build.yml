@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: minis-max-r5-private-source-build
+  group: minis-max-r5-private-source-build-retry-20261023
   cancel-in-progress: false
 
 jobs:
