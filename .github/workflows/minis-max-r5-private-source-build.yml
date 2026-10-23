@@ -52,7 +52,7 @@ jobs:
           for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
             sh -n "$script"
           done
-          sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
+          (cd "$GITHUB_WORKSPACE/MinisUltraMAXKit" && sh test_runtime_wrappers.sh)
 
       - name: Fetch pinned OpenMinis source
         shell: bash
@@ -79,7 +79,7 @@ jobs:
           for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
             sh -n "$script"
           done
-          sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
+          (cd "$GITHUB_WORKSPACE/MinisUltraMAXKit" && sh test_runtime_wrappers.sh)
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/apply_native_max.py" "$RUNNER_TEMP/OpenMinis"
           python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
           python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py" doctor >/dev/null
@@ -111,7 +111,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_taskctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
-          sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_runtime_wrappers.sh"
+          (cd "$GITHUB_WORKSPACE/MinisUltraMAXKit" && sh test_runtime_wrappers.sh)
           python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/tk_optimizer.py"
           test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-tk"
           test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-deb"
