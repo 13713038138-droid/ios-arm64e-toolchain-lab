@@ -21,6 +21,10 @@ extension = src / "FileProvider/FileProviderExtension.swift"
 assert all(p.is_file() for p in [budget, app, extension]), "NO-GO: unexpected source tree"
 
 def replace_once(src_text, old, new, label):
+    # The isolated R5 clone changes the bundle ID; keep patch signatures aligned
+    # without double-appending the R5 suffix to already-updated source.
+    old = re.sub(r"com\\.openminis\\.devultramax(?!\\.r5)", lambda _: bundle_id, old)
+    new = re.sub(r"com\\.openminis\\.devultramax(?!\\.r5)", lambda _: bundle_id, new)
     n = src_text.count(old)
     if n != 1:
         raise RuntimeError(f"NO-GO {label}: expected one known source site, got {n}")
@@ -261,7 +265,6 @@ helper = r'''enum ProviderKeychainHelper {
             return false
         }
     }'''
-helper = helper.replace("com.openminis.devultramax", bundle_id)
 ps = replace_once(ps, helper_anchor, helper, "MAX protected fallback helpers")
 
 sync_write = '        addQuery[kSecAttrSynchronizable as String] = true\n'
