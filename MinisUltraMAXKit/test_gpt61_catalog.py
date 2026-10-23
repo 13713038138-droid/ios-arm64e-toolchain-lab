@@ -29,6 +29,11 @@ PROVIDER = '''    static let codexClientVersion = "0.155.0"
         if !isOAuth { return true }
     }
 '''
+AGENT = '''        guard !level.isEnabled else { return nil }
+        if provider.customBaseURL == nil && !provider.isAzure { return "none" }
+        let base = provider.customBaseURL?.lowercased() ?? ""
+        let lid = model.id.lowercased()
+'''
 API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
                 ?? (item["reasoning"] as? Bool) {
                 model.supportsReasoning = reasoning
@@ -75,6 +80,7 @@ class Tests(unittest.TestCase):
             "src/ios/Providers/LLMTypes.swift": LLM,
             "src/ios/Providers/ThinkingLevelCatalog.swift": THINKING,
             "src/ios/Providers/OpenAI/OpenAIProvider.swift": PROVIDER,
+            "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift": AGENT,
             "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift": API,
             "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift": TESTS,
         }
@@ -98,6 +104,8 @@ class Tests(unittest.TestCase):
         self.assertIn('static let codexClientVersion = "0.159.1"', provider)
         self.assertIn('model.id.lowercased() == "gpt-6.1-sol"', provider)
         self.assertIn("customBaseURL == nil, !isAzure", provider)
+        agent = (root / "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift").read_text()
+        self.assertIn('if lid == "gpt-6.1-sol" { return "low" }', agent)
         api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text()
         self.assertIn('if id == "gpt-6.1-sol", model.supportsReasoning == nil', api)
         self.assertIn("model.supportsReasoning = true", api)
@@ -108,6 +116,7 @@ class Tests(unittest.TestCase):
         self.assertIn("if authoritative.reasoningEffortValues != nil", api)
         swift_tests = (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text()
         self.assertIn("guard let model = models.first else", swift_tests)
+        self.assertIn("testGPT61SolThinkingOffFallsBackToLow", swift_tests)
         self.assertIn("testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint", swift_tests)
         self.assertIn("testGPT61SolPreservesCustomEndpointRouting", swift_tests)
 
