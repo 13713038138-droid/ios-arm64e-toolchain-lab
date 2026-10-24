@@ -74,12 +74,20 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
         }
     steps = autopilot.choose_steps(project)
     selected = steps[:MAX_CHECKS]
+    # Compare the actual post-edit source and selected runner identity. A dirty Git
+    # working tree is normal after an approved patch; it must NOT disable repeat
+    # failure suppression and burn model/tool budget on unchanged failures.
+    fingerprint = autopilot.source_fingerprint(project)
+    selected_commands = json.dumps([(label, argv) for label, argv in selected], ensure_ascii=False)
+    source_signature = hashlib.sha256((fingerprint + selected_commands).encode()).hexdigest()
+    result["source_signature"] = source_signature
     # Do not burn additional test/token budget on identical failures when the
     # source, environment and test entry point have not changed.
     failure_key = None
     if previous and previous.get("status") in ("needs_source_repair", "blocked_repeat_failure") and patch is None:
         prior_key = previous.get("failure_key")
-        if prior_key and previous.get("before_revision") == summary["revision"] and not summary["dirty"]:
+        if (prior_key and previous.get("source_signature") == source_signature
+                and previous.get("objective_sha256") == result["objective_sha256"]):
             result["status"] = "blocked_repeat_failure"
             result["failure_key"] = prior_key
             result["next_agent_action"] = "Do not rerun unchanged failing tests. Investigate actual error and author a minimal source patch."
