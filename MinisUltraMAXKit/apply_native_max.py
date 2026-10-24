@@ -21,7 +21,7 @@ def substitute_once(src, old, new, target):
 
 s = substitute_once(s,
     "        installBundledSkills()\n        migrateMarkBundledSkillsDirty()",
-    "        installBundledSkills()\n        installBundledUltraSkill()\n        installBundledContinuationSkill()\n        migrateMarkBundledSkillsDirty()",
+    "        installBundledSkills()\n        installBundledUltraSkill()\n        installBundledContinuationSkill()\n        installBundledAutopilotSkill()\n        migrateMarkBundledSkillsDirty()",
     "SkillStore init")
 entry = """    // Minis Dev Ultra MAX: bundled professional developer agent.
     private func installBundledUltraSkill() {
@@ -46,17 +46,28 @@ recovery_entry = """    // R5.3 upgrade-safe guidance; preserve edited Dev Ultra
     }
 
 """
+autopilot_entry = """    // R5.4 independent, upgrade-safe bounded engineer autopilot skill.
+    private func installBundledAutopilotSkill() {
+        let id = "minis-dev-autopilot"
+        if skills.contains(where: { $0.id == id }) { return }
+        guard let overlay = Bundle.main.url(forResource: "default_mount", withExtension: nil) else { return }
+        let skillURL = overlay.appendingPathComponent("var/minis/skills/minis-dev-autopilot/SKILL.md")
+        guard let content = try? String(contentsOf: skillURL, encoding: .utf8) else { return }
+        _ = try? importSkill(content: content, source: .bundled)
+    }
+
+"""
 s = substitute_once(s,
     "    // MARK: - One-time Migration: re-sync skills with bundled files",
-    entry + recovery_entry + "    // MARK: - One-time Migration: re-sync skills with bundled files",
+    entry + recovery_entry + autopilot_entry + "    // MARK: - One-time Migration: re-sync skills with bundled files",
     "SkillStore bundled skill")
 a = substitute_once(a,
     '        SlashCommand(id: "thinking", icon: "lightbulb", title: "Thinking", subtitle: "Toggle deep thinking mode on/off"),',
-    '        SlashCommand(id: "thinking", icon: "lightbulb", title: "Thinking", subtitle: "Toggle deep thinking mode on/off"),\n        SlashCommand(id: "devmax", icon: "hammer.fill", title: "DevMax", subtitle: "Development execution & release gate"),\n        SlashCommand(id: "devcontinue", icon: "arrow.triangle.2.circlepath", title: "Continue Dev", subtitle: "Resume next safe development step"),\n        SlashCommand(id: "devfix", icon: "wrench.and.screwdriver", title: "Explain & Fix", subtitle: "Explain error, choose verified next action"),\n        SlashCommand(id: "devdoctor", icon: "stethoscope", title: "DevDoctor", subtitle: "Diagnose available development tools"),\n        SlashCommand(id: "devtk", icon: "chart.bar.doc.horizontal", title: "DevTK", subtitle: "Audit and reduce token waste with evidence protection"),\n        SlashCommand(id: "devdeb", icon: "shippingbox.fill", title: "Local DEB", subtitle: "Auto-prepare, sign, build and verify a Theos package"),\n        SlashCommand(id: "devabi", icon: "checkmark.seal", title: "R32 ABI v2", subtitle: "Verify source hashes and inspect Apple CI access"),\n        SlashCommand(id: "devnew", icon: "folder.badge.plus", title: "New Dev Project", subtitle: "Scaffold a tweak, UIKit app, CLI or preferences project"),\n        SlashCommand(id: "devhook", icon: "hammer", title: "HookLab", subtitle: "Evidence-first Objective-C hook scaffold"),',
+    '        SlashCommand(id: "thinking", icon: "lightbulb", title: "Thinking", subtitle: "Toggle deep thinking mode on/off"),\n        SlashCommand(id: "devmax", icon: "hammer.fill", title: "DevMax", subtitle: "Development execution & release gate"),\n        SlashCommand(id: "devcontinue", icon: "arrow.triangle.2.circlepath", title: "Continue Dev", subtitle: "Resume next safe development step"),\n        SlashCommand(id: "devfix", icon: "wrench.and.screwdriver", title: "Explain & Fix", subtitle: "Explain error, choose verified next action"),\n        SlashCommand(id: "devauto", icon: "brain.head.profile", title: "Auto Engineer", subtitle: "Inspect, execute tests, repair and resume autonomously"),\n        SlashCommand(id: "devdoctor", icon: "stethoscope", title: "DevDoctor", subtitle: "Diagnose available development tools"),\n        SlashCommand(id: "devtk", icon: "chart.bar.doc.horizontal", title: "DevTK", subtitle: "Audit and reduce token waste with evidence protection"),\n        SlashCommand(id: "devdeb", icon: "shippingbox.fill", title: "Local DEB", subtitle: "Auto-prepare, sign, build and verify a Theos package"),\n        SlashCommand(id: "devabi", icon: "checkmark.seal", title: "R32 ABI v2", subtitle: "Verify source hashes and inspect Apple CI access"),\n        SlashCommand(id: "devnew", icon: "folder.badge.plus", title: "New Dev Project", subtitle: "Scaffold a tweak, UIKit app, CLI or preferences project"),\n        SlashCommand(id: "devhook", icon: "hammer", title: "HookLab", subtitle: "Evidence-first Objective-C hook scaffold"),',
     "slash menu")
 a = substitute_once(a,
     '        case "clear":\n            clearChatConfirmRequested = true\n        default:\n            break',
-    '        case "devhook":\n            inputText = "/minis-dev-ultra HookLab: verify the target bundle, class, selector and exact method signature from evidence, then scaffold a pass-through Logos hook at a new path. Do not guess ABI or install. If evidence is missing, report it. " + inputText\n            requestComposerFocusSignal.send()\n        case "devnew":\n            inputText = "/minis-dev-ultra Choose tweak, UIKit app, CLI or preferences based on my requirement, then create a new project with minis-dev-ultra new. Use an explicit new output path, validate the bundle id and select the correct RootHide/rootless scheme. Do not overwrite existing files and do not install the resulting package. " + inputText\n            requestComposerFocusSignal.send()\n        case "devmax":\n            inputText = "/minis-dev-ultra " + inputText\n            requestComposerFocusSignal.send()\n        case "devcontinue":\n            inputText = "/minis-dev-ultra CONTINUE the current project, not a new one. Read project source, latest real logs, git status and minis task journal; create a journal if missing, otherwise resume the last verified checkpoint, choose and execute the next bounded safe action, then run tests and save the next checkpoint. Do not just explain or ask me to decide an engineering approach. If blocked by missing access, unknown API/ABI, actual server denial, or required approval, explain simply in Chinese with one next action. Do not modify the stable baseline, do not install or delete apps automatically. " + inputText\n            requestComposerFocusSignal.send()\n        case "devfix":\n            inputText = "/minis-dev-ultra FIX: read and classify the real error. Use minis-dev-ultra assist --error <redacted error text> or --log <existing log path>; never infer an HTTP 400 cause from status alone. Inspect source, reproduce, apply the smallest safe fix and run focused regression, document pass/fail and rollback. For model 400, distinguish account entitlement/model ID from request schema and effort; backup-restored models are not authority. Summarize nontechnically in Chinese; perform the next safe verified step without asking me to invent a solution. " + inputText\n            requestComposerFocusSignal.send()\n        case "devdoctor":\n            inputText = "/minis-dev-ultra Run minis-dev-ultra doctor and report actual compiler/runtime capabilities. " + inputText\n            requestComposerFocusSignal.send()\n        case "devtk":\n            inputText = "/minis-dev-ultra Use the local tk_optimizer.py audit/chat/pack-log/cost tool. Do not claim to bypass provider quotas. Inspect file first, preserve the original. " + inputText\n            requestComposerFocusSignal.send()\n        case "devdeb":\n            inputText = "/minis-dev-ultra Find the active Theos project and run minis-deb auto --project <exact project path> --arch auto. Prepare missing host dependencies when supported, preserve existing project ARCHS and RootHide scheme, use Theos ldid signing, verify DEB metadata, Mach-O architecture slices, LC_CODE_SIGNATURE presence and SHA-256. Do not install the DEB automatically. If the host cannot execute the toolchain or the iPhoneOS SDK is unavailable, report NO-GO and the exact blocker. " + inputText\n            requestComposerFocusSignal.send()\n        case "devabi":\n            inputText = "/minis-dev-ultra Run minis-abi preflight with explicit source archive and candidate DEB paths and expected SHA-256 values, then run minis-abi apple-check for the selected repository. Never upload source or dispatch CI during this read-only check. Report whether private repository access, workflow_dispatch, ABI-v2 markers and the original verifier are confirmed; do not mark ABI v2 accepted without a clean Apple/Xcode run and original verifier evidence. " + inputText\n            requestComposerFocusSignal.send()\n        case "clear":\n            clearChatConfirmRequested = true\n        default:\n            break',
+    '        case "devhook":\n            inputText = "/minis-dev-ultra HookLab: verify the target bundle, class, selector and exact method signature from evidence, then scaffold a pass-through Logos hook at a new path. Do not guess ABI or install. If evidence is missing, report it. " + inputText\n            requestComposerFocusSignal.send()\n        case "devnew":\n            inputText = "/minis-dev-ultra Choose tweak, UIKit app, CLI or preferences based on my requirement, then create a new project with minis-dev-ultra new. Use an explicit new output path, validate the bundle id and select the correct RootHide/rootless scheme. Do not overwrite existing files and do not install the resulting package. " + inputText\n            requestComposerFocusSignal.send()\n        case "devmax":\n            inputText = "/minis-dev-ultra " + inputText\n            requestComposerFocusSignal.send()\n        case "devcontinue":\n            inputText = "/minis-dev-ultra CONTINUE the current project, not a new one. Read project source, latest real logs, git status and minis task journal; create a journal if missing, otherwise resume the last verified checkpoint, choose and execute the next bounded safe action, then run tests and save the next checkpoint. Do not just explain or ask me to decide an engineering approach. If blocked by missing access, unknown API/ABI, actual server denial, or required approval, explain simply in Chinese with one next action. Do not modify the stable baseline, do not install or delete apps automatically. " + inputText\n            requestComposerFocusSignal.send()\n        case "devfix":\n            inputText = "/minis-dev-ultra FIX: read and classify the real error. Use minis-dev-ultra assist --error <redacted error text> or --log <existing log path>; never infer an HTTP 400 cause from status alone. Inspect source, reproduce, apply the smallest safe fix and run focused regression, document pass/fail and rollback. For model 400, distinguish account entitlement/model ID from request schema and effort; backup-restored models are not authority. Summarize nontechnically in Chinese; perform the next safe verified step without asking me to invent a solution. " + inputText\n            requestComposerFocusSignal.send()\n        case "devauto":\n            inputText = "/minis-dev-autopilot AUTO ENGINEER: keep working on my current project with the ACTUAL tools available. Inspect repository, baseline and task journal; invoke python3 /usr/local/lib/minis-dev-ultra/autopilot.py plan --project PROJECT and, for authorized test-only steps, run --project PROJECT --execute. Read its machine-readable next_agent_action, investigate actual failures, use available source-edit tools to apply ONE reversible fix, rerun focused tests, record checkpoints, then continue within bounded agent/tool budgets until verified delivery or a true blocker. Prefer known existing toolchains and CI; avoid repeatedly asking me to choose engineering techniques. Never run arbitrary project scripts without examining them, never install/delete/respring/push or change credentials without explicit approval, never claim background persistence or that a missing tool was used, and never fabricate a signed release. In Chinese report actual verified outputs and next blocked action. " + inputText\n            requestComposerFocusSignal.send()\n        case "devdoctor":\n            inputText = "/minis-dev-ultra Run minis-dev-ultra doctor and report actual compiler/runtime capabilities. " + inputText\n            requestComposerFocusSignal.send()\n        case "devtk":\n            inputText = "/minis-dev-ultra Use the local tk_optimizer.py audit/chat/pack-log/cost tool. Do not claim to bypass provider quotas. Inspect file first, preserve the original. " + inputText\n            requestComposerFocusSignal.send()\n        case "devdeb":\n            inputText = "/minis-dev-ultra Find the active Theos project and run minis-deb auto --project <exact project path> --arch auto. Prepare missing host dependencies when supported, preserve existing project ARCHS and RootHide scheme, use Theos ldid signing, verify DEB metadata, Mach-O architecture slices, LC_CODE_SIGNATURE presence and SHA-256. Do not install the DEB automatically. If the host cannot execute the toolchain or the iPhoneOS SDK is unavailable, report NO-GO and the exact blocker. " + inputText\n            requestComposerFocusSignal.send()\n        case "devabi":\n            inputText = "/minis-dev-ultra Run minis-abi preflight with explicit source archive and candidate DEB paths and expected SHA-256 values, then run minis-abi apple-check for the selected repository. Never upload source or dispatch CI during this read-only check. Report whether private repository access, workflow_dispatch, ABI-v2 markers and the original verifier are confirmed; do not mark ABI v2 accepted without a clean Apple/Xcode run and original verifier evidence. " + inputText\n            requestComposerFocusSignal.send()\n        case "clear":\n            clearChatConfirmRequested = true\n        default:\n            break',
     "slash dispatch")
 
 skill = """---
@@ -71,6 +82,12 @@ Always use actual project files and runtime tools. Work in a source-control bran
 preserve user data and known-good releases, then work in the loop:
 inspect -> reproduce -> isolate -> modify -> test -> verify -> package -> document rollback.
 Never state that a build, device test or release passed without execution evidence.
+
+## R5.4 real bounded Auto Engineer
+On fully automatic requests load minis-dev-autopilot. Use its actual foreground
+Python project/test runner for verifiable bounded execution, with the chat agent
+responsible for authorized minimal source edits. Do not equate prompt-only
+instructions, test commands, background execution or finished release.
 
 ## Non-expert continuation and error recovery (R5.3)
 The user is not required to know the next engineering step. On "continue", "继续", "please fix", "为什么还没完成", or a bare error, treat it as a request to continue the active project rather than to write a long diagnosis.
@@ -144,6 +161,69 @@ When a request says "continue", "继续" or gives an error, resume the ACTIVE pr
 Use minis-dev-ultra skill specialist references for deep engineering details; this skill adds continuation behavior rather than replacing edited user skills.
 """
 
+autopilot_skill = """---
+name: minis-dev-autopilot
+version: 1.0.0
+description: Autonomously continue software projects with real tools, bounded engineering iterations, verified tests, persistent local checkpoints and explicit high-risk approval. Use for 继续, 全自动, super engineer, repair, build, reverse-engineering tasks.
+---
+
+# Minis Dev Ultra MAX R5.4 | Auto Engineer
+
+When the user gives a goal, act as the lead engineer rather than presenting a menu of
+implementation techniques. Reuse the current project and established history.
+Use real tools; never invent access. This skill DOES NOT add a background daemon,
+an independent AI model, unrestricted shell access or arbitrary new permissions.
+
+## Every cycle (bounded, evidence-driven)
+1. Identify existing working directory, stable commit/backup and exact acceptance.
+   Read git status and current project files. If no project exists, use the safe
+   scaffolder ONLY for a clearly requested new project.
+2. Discover relevant profiles via minis-dev-ultra route --task "USER GOAL".
+   Read only the necessary professional references. Do not pretend the 19 references
+   are separate automatically executing agents.
+3. Run: python3 /usr/local/lib/minis-dev-ultra/autopilot.py plan --project PROJECT
+   The plan is read-only. Verify proposed steps are relevant and project-local.
+4. When the user requested automated development AND the repository/test scripts
+   have been reviewed, run:
+   python3 /usr/local/lib/minis-dev-ultra/autopilot.py run --project PROJECT --execute
+   This runs bounded allowlisted test commands. Other commands and publishing
+   require separate real tools with their own authorization.
+5. On a test failure, inspect exact sanitized evidence, review call sites, make
+   ONE minimal reversible source patch via available tool, rerun targeted tests,
+   update actual taskctl checkpoints. NO identical repeat after two failures.
+   The Python runner does not invent, author or apply arbitrary source patches.
+6. For Theos local DEB preparation, inspect Makefile/control, SDK and ABI first.
+   Build when authorized, using --allow-build for the runner and existing
+   minis-deb tooling; do not install, respring or overwrite a stable baseline.
+7. Never claim done until code, build, signature, hashes and device runtime
+   checks relevant to the goal are genuinely evidenced. Mark tests not run.
+
+## Safety and autonomy boundary
+Read-only discovery, code inspection, planning and ordinary user-authorized
+test/build execution may proceed without asking for every engineering choice.
+STOP before destructive changes, package installation, respring, external
+publishing, paid API calls, secrets changes, changing provider access, private
+source publication or unverified unsafe Hook/ABI changes. Ask for the required
+permission at that exact boundary. Do not turn off safety or disable protections.
+Existing checks, PAC ABI, RootHide, 120Hz, user data, R5.3's working GPT-6.1
+Sol routing and original App Store Minis must remain intact unless explicitly
+requested and regression-verified.
+
+## Operating limits
+No guarantee of solving every problem: missing SDKs, accounts, signatures,
+unknown private APIs, hardware or device tests can block. This is a foreground
+in-conversation workflow. Closing Minis may stop execution. Task state persists,
+but no background daemon is installed. Resume requires an available future
+agent session. Do not make unsupported background promises.
+
+Explain in plain Chinese only the useful verified result, concrete blocker and
+next real action, not long speculative analysis.
+"""
+autopilot_path = mount / "var/minis/skills/minis-dev-autopilot/SKILL.md"
+assert not autopilot_path.exists(), "NO-GO: refusing to overwrite user autopilot skill"
+autopilot_path.parent.mkdir(parents=True, exist_ok=True)
+autopilot_path.write_text(autopilot_skill, encoding="utf-8")
+
 recovery_path = mount / "var/minis/skills/minis-dev-continuation/SKILL.md"
 assert not recovery_path.exists(), "NO-GO: refusing to overwrite existing continuation skill"
 recovery_path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,6 +244,10 @@ task_journal = extra.with_name("taskctl.py")
 assert not task_journal.exists(), "NO-GO: refusing to overwrite preexisting task journal"
 shutil.copy2(Path(__file__).with_name("taskctl.py"), task_journal)
 task_journal.chmod(0o644)
+autopilot_runner = extra.with_name("autopilot.py")
+assert not autopilot_runner.exists(), "NO-GO: refusing to overwrite preexisting autopilot tool"
+shutil.copy2(Path(__file__).with_name("autopilot.py"), autopilot_runner)
+autopilot_runner.chmod(0o644)
 deb_factory = extra.with_name("deb_factory.py")
 assert not deb_factory.exists(), "NO-GO: refusing to overwrite preexisting local DEB factory"
 shutil.copy2(Path(__file__).with_name("deb_factory.py"), deb_factory)
