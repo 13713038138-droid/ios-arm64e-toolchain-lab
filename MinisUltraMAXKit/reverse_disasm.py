@@ -18,7 +18,20 @@ LINE=re.compile(r"^\s*([0-9a-fA-F]{1,16}):\s+([0-9a-fA-F]{8})\s+([a-zA-Z][a-zA-Z
 def executable():
     # Use a real executable on this host. Do not download or pip-install
     # anything or claim Capstone/LLVM when not installed.
-    return shutil.which("llvm-objdump")
+    found=shutil.which("llvm-objdump")
+    if found: return found
+    xcrun=shutil.which("xcrun")
+    if xcrun:
+        try:
+            out=subprocess.run([xcrun,"--find","llvm-objdump"],capture_output=True,
+                               text=True,timeout=4,check=False)
+            if out.returncode==0:
+                candidate=out.stdout.strip()
+                if os.path.isfile(candidate) and os.access(candidate,os.X_OK):
+                    return candidate
+        except (OSError,subprocess.TimeoutExpired):
+            pass
+    return None
 
 def decode(data, start, length, address, count):
     """Return (instructions, problem). Empty result means NOT verified."""
