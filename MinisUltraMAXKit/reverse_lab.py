@@ -323,11 +323,9 @@ def analyze_slice(data, start, length, search="", at=None, count=24):
                     if info:
                         instructions.append({"address": f"0x{pc:x}", **info})
         result["instructions"] = instructions
-        result["caveat"] = "Static evidence only: offsets, runtime ASLR, PAC ABI and Swift layout require independent validation"
-        return result
+    result["caveat"] = "Static evidence only: offsets, runtime ASLR, PAC ABI and Swift layout require independent validation"
+    return result
 
-# Removal of an old fallback block happens separately below.
-def __REVERSELAB_OLD_UNREACHABLE__():
 def analyze(path, search="", at=None, count=24):
     path = pathlib.Path(path).expanduser()
     if path.is_symlink() or not path.is_file():
