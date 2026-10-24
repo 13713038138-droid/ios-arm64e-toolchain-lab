@@ -42,6 +42,7 @@ jobs:
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_auto_engineer_cycle.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_lab.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_disasm.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_intake.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_release_capabilities.py" -v
           python3 MinisUltraMAXKit/reverse_intake.py doctor | grep -q '"runtime_hooking": false'
@@ -69,6 +70,7 @@ jobs:
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/auto_engineer_cycle.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_lab.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_intake.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_disasm.py"
           test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse"
           MINIS_DEV_ULTRA_LIB="$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra" "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse" doctor | grep -q '"runtime_hooking": false'
           python3 MinisUltraMAXKit/patch_share_handoff.py "$RUNNER_TEMP/OpenMinis"
