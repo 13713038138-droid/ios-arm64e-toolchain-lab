@@ -59,6 +59,13 @@ jobs:
           grep -q 'detail.localizedCaseInsensitiveContains' "$RUNNER_TEMP/OpenMinis/src/ios/Providers/OpenAI/OpenAIProvider.swift"
           python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" assist --error 'HTTP 400' | grep -q '"generic_400"'
           echo "PASS: exact pinned upstream source patched; not an IPA compile/device pass"
+      - name: Standalone Swift model regression (not Simulator XCTest)
+        run: |
+          set -euo pipefail
+          swift MinisUltraMAXKit/R5_GPT61_MODEL_PORTABLE.swift "$RUNNER_TEMP/OpenMinis"
+          swift "$RUNNER_TEMP/OpenMinis/src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift"
+          echo "PASS: standalone Swift tests only; full iOS Simulator XCTest is unsupported by device-only iSH libs"
+
 
       - name: Confirm generic 400 is not treated as authorized
         run: |
