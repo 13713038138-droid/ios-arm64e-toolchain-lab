@@ -269,6 +269,10 @@ reverse_analyzer = extra.with_name("reverse_lab.py")
 assert not reverse_analyzer.exists(), "NO-GO: refusing to overwrite preexisting ReverseLab"
 shutil.copy2(Path(__file__).with_name("reverse_lab.py"), reverse_analyzer)
 reverse_analyzer.chmod(0o644)
+reverse_archive = extra.with_name("reverse_intake.py")
+assert not reverse_archive.exists(), "NO-GO: refusing to overwrite preexisting ReverseLab archive executor"
+shutil.copy2(Path(__file__).with_name("reverse_intake.py"), reverse_archive)
+reverse_archive.chmod(0o644)
 deb_factory = extra.with_name("deb_factory.py")
 assert not deb_factory.exists(), "NO-GO: refusing to overwrite preexisting local DEB factory"
 shutil.copy2(Path(__file__).with_name("deb_factory.py"), deb_factory)
@@ -297,7 +301,7 @@ for source, target, mode in tool_targets:
     shutil.copy2(source, target)
     target.chmod(mode)
 with mainskill.open("a", encoding="utf-8") as m:
-    m.write("\n\n## Integrated ReverseLab R5.6 binary-only project executor\nRun minis-reverse doctor, then minis-reverse analyze <ACTUAL_BINARY> --search <KNOWN_NAME>; use minis-reverse disasm <ACTUAL_BINARY> --at <REAL_VMADDR> for ARM64 branch evidence or full Capstone decoding when installed. Link actual Swift nominal descriptors, LC_FUNCTION_STARTS and Mach-O symbols to the required feature. Metadata and binary hashes are evidence; Swift property layouts, PAC ABI, dynamic runtime authority and Hook signatures require independent validation. Then implement a separate Hook in a source branch and run tests and packaging with existing tools. Do not overwrite stable dylibs or pretend an unavailable disassembler ran.\n")
+    m.write("\n\n## Integrated ReverseLab R5.6 binary-only project executor\nRun minis-reverse doctor, minis-reverse inventory <IPA_OR_DEB> to locate the real executable, then minis-reverse analyze <ACTUAL_BINARY_OR_ARCHIVE> --member <EXACT_PATH_WHEN_NEEDED> --search <KNOWN_NAME>; use minis-reverse inventory <IPA_OR_DEB> then minis-reverse analyze <IPA_OR_DEB> --member <EXACT_PATH>, or minis-reverse disasm <ACTUAL_BINARY> --at <REAL_VMADDR> for ARM64 branch evidence or full Capstone decoding when installed. Link actual Swift nominal descriptors, LC_FUNCTION_STARTS and Mach-O symbols to the required feature. Metadata and binary hashes are evidence; Swift property layouts, PAC ABI, dynamic runtime authority and Hook signatures require independent validation. Then implement a separate Hook in a source branch and run tests and packaging with existing tools. Do not overwrite stable dylibs or pretend an unavailable disassembler ran.\n")
     m.write("\n\n## Native offline tools\nUse: minis-dev-ultra doctor|assist|route|new|inspect|triage|scan-secrets|diffzip|manifest|verify-manifest|gate|checkpoint. Use minis-bin for static IPA/DEB/Mach-O inspection, minis-deb auto --project PATH --arch auto for local Theos build/sign/package verification, and minis-abi preflight|apple-check for R32 ABI-v2 source hashes and read-only Apple CI access inspection.\nAll release gate fields must be verified true before claiming an IPA is safe to install.\n")
 # Bundle independent specialist references; they are loaded only when needed.
 ref_source = Path(__file__).parent / "references"
