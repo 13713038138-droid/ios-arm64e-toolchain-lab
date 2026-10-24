@@ -52,7 +52,14 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
     }
     if not execute:
         result["status"] = "plan_only"
-        result["next_agent_action"] = "Use actual file tools to inspect code and produce an exact minimal diff; rerun with --execute."
+        result["previous_checkpoint"] = {
+            "status": previous.get("status"),
+            "current_step": previous.get("current_step"),
+            "source_signature": previous.get("source_signature"),
+            "checks_completed": len(previous.get("checks", []))
+        } if previous else None
+        result["next_agent_action"] = ("Prior checkpoint is read-only; resume with --execute only after "
+            "reviewing the previous step and verifying model/tool availability.")
         return result
     if patch is not None:
         if not approve_source_edit:
@@ -72,6 +79,12 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
             "patch_sha256": hashlib.sha256(payload).hexdigest(),
             "base_revision": revision,
         }
+        # Persist the edit BEFORE starting potentially long-running tests.
+        # On process termination the next session can distinguish a real edit
+        # from a merely proposed patch instead of accidentally double-applying.
+        result["status"] = "source_applied_tests_pending"
+        result["updated_at"] = autopilot.timestamp()
+        autopilot.save_state(state_path, result)
     steps = autopilot.choose_steps(project)
     selected = steps[:MAX_CHECKS]
     # Compare the actual post-edit source and selected runner identity. A dirty Git
@@ -107,8 +120,15 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
                 result["status"] = "approval_required_for_build"
                 result["next_agent_action"] = "Build requires --allow-build after inspection of Makefile/control; existing code edits are retained."
                 break
+            # Crash/power loss/model interruption leaves a durable in-flight
+            # step, even if the process dies before the test returns.
+            result["status"] = "running_checks"
+            result["current_step"] = name
+            result["updated_at"] = autopilot.timestamp()
+            autopilot.save_state(state_path, result)
             completed = autopilot.execute(project, name, argv, timeout)
             result["checks"].append(completed)
+            result.pop("current_step", None)
             if completed["outcome"] != "pass":
                 result["status"] = "needs_source_repair"
                 result["failure_key"] = hashlib.sha256((name + completed["outcome"] + completed.get("excerpt", "")).encode()).hexdigest()
@@ -140,6 +160,7 @@ def main(argv=None):
     parser.add_argument("--patch-file")
     parser.add_argument("--expected-head")
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--status", action="store_true", help="Read only: show last persisted step; never run tests")
     parser.add_argument("--approve-source-edit", action="store_true")
     parser.add_argument("--allow-build", action="store_true")
     parser.add_argument("--timeout", type=int, default=90)
@@ -147,6 +168,20 @@ def main(argv=None):
     if args.timeout < 1 or args.timeout > 300:
         parser.error("--timeout must be 1..300")
     try:
+        if args.status:
+            project = autopilot.valid_project(args.project)
+            checkfile = safe_checkpoint(project, args.objective)
+            if checkfile.is_symlink():
+                raise ValueError("NO-GO: linked checkpoint")
+            state = json.loads(checkfile.read_text(encoding="utf-8")) if checkfile.is_file() else None
+            print(json.dumps({"status": "checkpoint_found" if state else "no_checkpoint",
+                  "saved_status": state.get("status") if state else None,
+                  "current_step": state.get("current_step") if state else None,
+                  "source_signature": state.get("source_signature") if state else None,
+                  "checks_completed": len(state.get("checks", [])) if state else 0,
+                  "note": "Read only; no model retry, background worker or automatic resume"},
+                  ensure_ascii=False, indent=2))
+            return 0
         report = run_cycle(args.project, args.objective, args.patch_file,
                            args.expected_head, args.execute,
                            args.approve_source_edit, args.allow_build, args.timeout)
