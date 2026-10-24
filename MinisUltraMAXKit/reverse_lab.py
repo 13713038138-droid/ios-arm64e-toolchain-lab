@@ -306,18 +306,28 @@ def analyze_slice(data, start, length, search="", at=None, count=24):
                 if len(instructions) >= n: break
             result["disassembler"] = "capstone"
         except ImportError:
-            result["disassembler"] = "builtin-branch-only"
-            result["warnings"].append("Capstone not installed: full instruction disassembly unavailable")
-            for k in range(n):
-                pc = at + k*4
-                word = struct.unpack_from("<I", data, offset+k*4)[0]
-                info = decode_branch(word, pc)
-                if info:
-                    instructions.append({"address": f"0x{pc:x}", **info})
+            # Actual native LLVM disassembly is the next provider; the built-in
+            # branch decoder remains an honest, limited fallback if unavailable.
+            import reverse_disasm
+            decoded, limitation = reverse_disasm.decode(data, start, length, at, n)
+            if decoded:
+                instructions=decoded
+                result["disassembler"]="llvm-objdump"
+            else:
+                result["disassembler"] = "builtin-branch-only"
+                result["warnings"].append("Full decoder unavailable: " + limitation)
+                for k in range(n):
+                    pc = at + k*4
+                    word = struct.unpack_from("<I", data, offset+k*4)[0]
+                    info = decode_branch(word, pc)
+                    if info:
+                        instructions.append({"address": f"0x{pc:x}", **info})
         result["instructions"] = instructions
-    result["caveat"] = "Static evidence only: offsets, runtime ASLR, PAC ABI and Swift layout require independent validation"
-    return result
+        result["caveat"] = "Static evidence only: offsets, runtime ASLR, PAC ABI and Swift layout require independent validation"
+        return result
 
+# Removal of an old fallback block happens separately below.
+def __REVERSELAB_OLD_UNREACHABLE__():
 def analyze(path, search="", at=None, count=24):
     path = pathlib.Path(path).expanduser()
     if path.is_symlink() or not path.is_file():
@@ -372,13 +382,14 @@ def main(argv=None):
         cmd.add_argument("--out", help="Optional JSON output (not original input)")
     a = p.parse_args(argv)
     if a.action == "doctor":
+        import reverse_disasm
         try: import capstone; version = capstone.__version__
         except ImportError: version = None
         print(json.dumps({"python": sys.version.split()[0],
              "capstone": version, "llvm_objdump": shutil.which("llvm-objdump"),
              "built_in": ["Mach-O 64/fat parsing", "Swift/ObjC section and symbol scanning",
                           "function starts", "ARM64 branch targets"],
-             "full_disassembly": bool(version), "runtime_hooking": False},indent=2))
+             "full_disassembly": bool(version or reverse_disasm.executable()), "runtime_hooking": False},indent=2))
         return 0
     try:
         if a.count < 1 or a.count > 128: raise ParseError("count must be between 1 and 128")
