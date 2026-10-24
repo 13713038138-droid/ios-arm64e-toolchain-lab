@@ -68,6 +68,12 @@ RULES={
     "reverse_cli":(
        "src/ios/default_mount/usr/local/bin/minis-reverse",
        ("reverse_intake.py",)),
+    "reverse_hook_bridge_generator":(
+       "src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_hook_bridge.py",
+       ("def prepare(", "def scaffold(", "devctl.cmd_hook(")),
+    "reverse_hook_bridge_cli":(
+       "src/ios/default_mount/usr/local/bin/minis-reverse-hook",
+       ("reverse_hook_bridge.py",)),
     "original_task_journal":(
        "src/ios/default_mount/usr/local/lib/minis-dev-ultra/taskctl.py",
        ("checkpoint",)),
