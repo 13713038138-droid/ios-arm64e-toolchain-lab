@@ -21,7 +21,7 @@ def substitute_once(src, old, new, target):
 
 s = substitute_once(s,
     "        installBundledSkills()\n        migrateMarkBundledSkillsDirty()",
-    "        installBundledSkills()\n        installBundledUltraSkill()\n        migrateMarkBundledSkillsDirty()",
+    "        installBundledSkills()\n        installBundledUltraSkill()\n        installBundledContinuationSkill()\n        migrateMarkBundledSkillsDirty()",
     "SkillStore init")
 entry = """    // Minis Dev Ultra MAX: bundled professional developer agent.
     private func installBundledUltraSkill() {
@@ -35,9 +35,20 @@ entry = """    // Minis Dev Ultra MAX: bundled professional developer agent.
     }
 
 """
+recovery_entry = """    // R5.3 upgrade-safe guidance; preserve edited Dev Ultra skills.
+    private func installBundledContinuationSkill() {
+        let id = "minis-dev-continuation"
+        if skills.contains(where: { $0.id == id }) { return }
+        guard let overlay = Bundle.main.url(forResource: "default_mount", withExtension: nil) else { return }
+        let skillURL = overlay.appendingPathComponent("var/minis/skills/minis-dev-continuation/SKILL.md")
+        guard let content = try? String(contentsOf: skillURL, encoding: .utf8) else { return }
+        _ = try? importSkill(content: content, source: .bundled)
+    }
+
+"""
 s = substitute_once(s,
     "    // MARK: - One-time Migration: re-sync skills with bundled files",
-    entry + "    // MARK: - One-time Migration: re-sync skills with bundled files",
+    entry + recovery_entry + "    // MARK: - One-time Migration: re-sync skills with bundled files",
     "SkillStore bundled skill")
 a = substitute_once(a,
     '        SlashCommand(id: "thinking", icon: "lightbulb", title: "Thinking", subtitle: "Toggle deep thinking mode on/off"),',
@@ -114,6 +125,30 @@ runtime_dir = Path(__file__).parent / "runtime"
 doctor = (runtime_dir / "minis-dev-ultra").read_text(encoding="utf-8")
 cli = mount / "usr/local/bin/minis-dev-ultra"
 mainskill = mount / "var/minis/skills/minis-dev-ultra/SKILL.md"
+continuation = """---
+name: minis-dev-continuation
+version: 1.0.0
+description: Continue, resume and debug an existing programming or iOS tweak project for a nontechnical user. Trigger when they say 继续, continue, fix it, error 400, cannot compile or do not know next step.
+---
+
+# Continue development without making the user design the solution
+When a request says "continue", "继续" or gives an error, resume the ACTIVE project using the present chat, real source tree, logs and task journal. Do not start a different project, reset verified baselines, or require the user to choose a compiler/ABI strategy.
+
+1. Identify latest verified source revision, real build result and pending step. First inspect files and python3 /usr/local/lib/minis-dev-ultra/taskctl.py list; if a task exists, read or resume it. A journal is not an asynchronous agent.
+2. Classify the actual error using minis-dev-ultra assist --error "REDACTED_DETAILS" or --log PATH. HTTP 400 alone does not distinguish account restrictions from request parameters. Backup-imported GPT-6.1 entries may display without account authorization.
+3. Pick the smallest reversible fix and ACT with available tools. Verify project/toolchain/permission, run focused tests and negative controls, then update the checkpoint. Do not repeat a failed attempt unchanged more than twice.
+4. If blocked by a missing required source, device log, secret, entitlement or permission, do not speculate or fabricate results. Tell the user the one concrete item you need and why, in plain Chinese. Never ask the user to design technical next steps.
+5. End each work phase with: what changed, what actually passed, what did not pass, next action, rollback. A package is only installable if build, signing, hashes and appropriate device tests are verified.
+6. Never force-install a tweak, override original Minis/Stheno data, expose tokens, upload private source to a public repository, or bypass vendor model entitlements.
+
+Use minis-dev-ultra skill specialist references for deep engineering details; this skill adds continuation behavior rather than replacing edited user skills.
+"""
+
+recovery_path = mount / "var/minis/skills/minis-dev-continuation/SKILL.md"
+assert not recovery_path.exists(), "NO-GO: refusing to overwrite existing continuation skill"
+recovery_path.parent.mkdir(parents=True, exist_ok=True)
+recovery_path.write_text(continuation, encoding="utf-8")
+
 assert not cli.exists() and not mainskill.exists(), "NO-GO: refusing to replace preexisting resources"
 for path in [cli, mainskill]:
     path.parent.mkdir(parents=True, exist_ok=True)
