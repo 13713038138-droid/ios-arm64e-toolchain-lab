@@ -1,6 +1,8 @@
 """Negative controls for R5.5->R5.6 source capability-retention gate."""
 import tempfile
 import unittest
+import os
+from unittest.mock import patch
 from pathlib import Path
 import release_capabilities as gate
 
@@ -30,6 +32,15 @@ class ParityTests(unittest.TestCase):
         p.write_text("invalid\n")
         self.assertEqual(gate.evaluate(self.root,"full")["status"],"NO-GO")
         self.assertEqual(gate.evaluate(self.root,"core")["status"],"PASS")
+
+    def test_r56_isolated_group_does_not_implicitly_pass_r55(self):
+        marker = self.root / gate.RULES["shared_group_id"][0]
+        marker.write_text("group.com.openminis.devultramax.r56\n")
+        with patch.dict(os.environ, {"MINIS_MAX_BUNDLE_ID": "com.openminis.devultramax.r56"}):
+            self.assertEqual(gate.evaluate(self.root)["status"], "PASS")
+        with patch.dict(os.environ, {"MINIS_MAX_BUNDLE_ID": "com.openminis.devultramax.r55"}):
+            report = gate.evaluate(self.root)
+            self.assertIn("shared_group_id", report["failed"])
 
     def test_missing_share_is_blocked(self):
         file=self.root/gate.RULES["share_extension_saved_record"][0]

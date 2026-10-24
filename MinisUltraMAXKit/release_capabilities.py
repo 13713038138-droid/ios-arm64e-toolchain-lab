@@ -7,6 +7,7 @@ Never claim login, sharing or models work on device from source markers alone.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -98,6 +99,13 @@ def evaluate(root,level="core"):
     rules={**RULES,**(FULL_RULES if level=="full" else {})}
     checks={}
     for name,(relative,needles) in rules.items():
+        if name == "shared_group_id":
+            # Each isolated test variant must verify its OWN container group.
+            # The already released R5.5 remains the default on older builds.
+            bundle = os.environ.get("MINIS_MAX_BUNDLE_ID", "com.openminis.devultramax.r55")
+            if not bundle.startswith("com.openminis.devultramax.r5"):
+                raise ValueError("NO-GO: unexpected isolated Minis test identity")
+            needles = ("group." + bundle,)
         file=root/relative
         if not file.is_file() or file.is_symlink():
             checks[name]={"ok":False,"reason":"missing or symlink","file":relative}
