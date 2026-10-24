@@ -79,6 +79,37 @@ class ArchiveTests(unittest.TestCase):
         with self.assertRaises(ri.IntakeError):
             ri.inspect(deb,"./usr/lib/Stheno.dylib")
 
+    def test_search_across_multiple_binaries_finds_real_swift_descriptor(self):
+        ipa=self.root/"duo.ipa"
+        with zipfile.ZipFile(ipa,"w") as out:
+            out.writestr("Payload/Minis.app/Minis",fixture())
+            out.writestr("Payload/Minis.app/Frameworks/Agent.framework/Agent",fixture())
+        result=ri.search_package(ipa,"WidgetCore")
+        self.assertEqual(result["status"],"evidence_found")
+        self.assertEqual(result["examined_binaries"],2)
+        self.assertEqual(result["total_candidates"],2)
+        self.assertEqual(len(result["matches"]),2)
+        self.assertTrue(result["matches"][0]["swift_nominal_matches"])
+
+    def test_search_no_invented_swift_type_and_no_false_full_coverage(self):
+        ipa=self.root/"many.ipa"
+        with zipfile.ZipFile(ipa,"w") as out:
+            out.writestr("Payload/Minis.app/Minis",fixture())
+            out.writestr("Payload/Minis.app/Frameworks/Agent.framework/Agent",fixture())
+        result=ri.search_package(ipa,"SomeImpossibleName",max_files=1)
+        self.assertEqual(result["status"],"no_evidence_found")
+        self.assertTrue(result["incomplete"])
+        self.assertEqual(result["examined_binaries"],1)
+
+    def test_search_command_cli(self):
+        ipa=self.root/"scan.ipa"
+        with zipfile.ZipFile(ipa,"w") as out:
+            out.writestr("Payload/Minis.app/Minis",fixture())
+        proc=subprocess.run([sys.executable,str(Path(ri.__file__)),"search",str(ipa),
+                             "--search","WidgetCore"],capture_output=True,text=True)
+        self.assertEqual(proc.returncode,0,proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["status"],"evidence_found")
+
     def test_archive_is_unchanged_by_read_only_inspection(self):
         ipa=self.root/"safe.ipa"
         with zipfile.ZipFile(ipa,"w") as out:
