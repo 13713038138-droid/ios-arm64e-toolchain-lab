@@ -130,7 +130,7 @@ def execute(project, label, argv, timeout):
         done = subprocess.run(argv, cwd=str(project), capture_output=True,
                               timeout=timeout, check=False, env=env)
         output = (done.stdout + b"\n" + done.stderr)[-8192:].decode("utf-8", "replace")
-        return {"step": label, "outcome": ("not_verified" if done.returncode == 0 and label == "python-tests" and "Ran 0 tests" in output else ("pass" if done.returncode == 0 else "failed")),
+        return {"step": label, "outcome": ("not_verified" if label == "python-tests" and bool(re.search(r"Ran\\s+0\\s+tests", output)) else ("pass" if done.returncode == 0 else "failed")),
                 "exit_code": done.returncode, "excerpt": clean(output)}
     except subprocess.TimeoutExpired as exc:
         return {"step": label, "outcome": "timeout", "exit_code": None,
