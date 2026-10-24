@@ -55,6 +55,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_source_patch.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_auto_engineer_cycle.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_share_handoff.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_gpt61_catalog.py" -v
           for script in "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/"*.sh "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-bin" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-dev-ultra" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-tk" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-deb" "$GITHUB_WORKSPACE/MinisUltraMAXKit/runtime/minis-abi"; do
@@ -196,6 +197,7 @@ jobs:
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/source_patch.py"
+          test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/auto_engineer_cycle.py"
           test -f "$APP/default_mount/var/minis/skills/minis-dev-autopilot/SKILL.md"
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/tk_optimizer.py"
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
