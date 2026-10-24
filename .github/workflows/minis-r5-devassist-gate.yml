@@ -36,6 +36,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_autopilot.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_source_patch.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devassist.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_gpt61_catalog.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devctl.py" -v
@@ -53,6 +55,9 @@ jobs:
           python3 MinisUltraMAXKit/patch_gpt61_catalog.py "$RUNNER_TEMP/OpenMinis"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/source_patch.py"
+          python3 MinisUltraMAXKit/patch_share_handoff.py "$RUNNER_TEMP/OpenMinis"
+          grep -q "guard saved else" "$RUNNER_TEMP/OpenMinis/src/ios/ShareExtension/ShareViewController.swift"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-autopilot/SKILL.md"
           grep -q 'case "devauto"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'installBundledAutopilotSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
