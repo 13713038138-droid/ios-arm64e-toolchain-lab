@@ -259,6 +259,19 @@ def patch_tests(s):
                       "gpt-6.1-sol needs the 0.159.1 Codex client baseline, got \\(OpenAIProvider.codexClientVersion)")'''
     return replace_once(s, old, new, "client-version regression test")
 
+def patch_standalone_model_discovery_test(s):
+    # The upstream standalone test checks that the client version STRING has
+    # a "0.155." prefix. That breaks on every legitimate version increase,
+    # including 0.159.1. Check the numeric floor instead, without reducing it.
+    old = '    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))'
+    new = '''    let marker = "codexClientVersion = \\""
+    let segments = provider.components(separatedBy: marker)
+    let v = segments.count > 1 ? String(segments[1].prefix(while: { $0 != "\\"" })) : ""
+    let digits = v.split(separator: ".").compactMap { Int($0) }
+    let enough = digits.count == 3 && (digits[0] * 1_000_000 + digits[1] * 1_000 + digits[2] >= 155_000)
+    check("client version is at least 0.155.0 (numeric)", enough)'''
+    return replace_once(s, old, new, "upstream stale exact-prefix standalone test")
+
 def verify(root):
     t = (root / "src/ios/Providers/LLMTypes.swift").read_text(encoding="utf-8")
     c = (root / "src/ios/Providers/ThinkingLevelCatalog.swift").read_text(encoding="utf-8")
@@ -295,6 +308,7 @@ def verify(root):
         'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: model, level: .medium), "medium"' in x,
         'testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint' in x,
         'testGPT61SolPreservesCustomEndpointRouting' in x,
+        'client version is at least 0.155.0 (numeric)' in (root / "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift").read_text(encoding="utf-8"),
     ]
     if not all(checks):
         raise RuntimeError("NO-GO GPT61: post-patch source verification failed")
@@ -306,6 +320,7 @@ def apply(root):
     edit(root, "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift", patch_agent)
     edit(root, "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift", patch_models_api)
     edit(root, "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift", patch_tests)
+    edit(root, "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift", patch_standalone_model_discovery_test)
     verify(root)
 
 def main(argv=None):
