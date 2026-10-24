@@ -43,6 +43,7 @@ jobs:
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_lab.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_intake.py" -v
+          python3 MinisUltraMAXKit/reverse_intake.py doctor | grep -q '"runtime_hooking": false'
           sh -n MinisUltraMAXKit/runtime/minis-reverse
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devassist.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_gpt61_catalog.py" -v
