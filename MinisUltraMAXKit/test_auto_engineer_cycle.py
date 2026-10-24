@@ -87,7 +87,9 @@ class EngineerCycleTests(unittest.TestCase):
         self.assertEqual(second["status"], "blocked_repeat_failure")
         self.assertEqual(second["checks"], [])
         self.assertEqual(first["source_signature"], second["source_signature"])
-        (self.project / "module.py").write_text("VALUE = 2\n")
+        # Change size as well as content: CPython timestamp-based .pyc caches
+        # can keep the prior value when equal-size edits land in one second.
+        (self.project / "module.py").write_text("VALUE = 2  # repaired\n")
         third = self.cycle()
         self.assertEqual(third["status"], "verified_checks_passed")
         self.assertNotEqual(third["source_signature"], second["source_signature"])
