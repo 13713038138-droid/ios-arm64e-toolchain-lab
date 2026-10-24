@@ -157,6 +157,12 @@ def choose_steps(project):
 def execute(project, label, argv, timeout):
     env = os.environ.copy()
     env["GOPROXY"] = "off"  # Go tests should not silently fetch modules.
+    # Tests that edit a same-sized Python source within a single second must
+    # never pass/fail using stale .pyc files from a previous model attempt.
+    # Each Python run gets an independent cache directory outside the project.
+    cache = tempfile.TemporaryDirectory(prefix="minis-test-pyc-") if label == "python-tests" else None
+    if cache:
+        env["PYTHONPYCACHEPREFIX"] = cache.name
     try:
         # The tool never starts a shell. Project tests can execute project code;
         # callers must use --execute after inspecting the project.
@@ -172,6 +178,9 @@ def execute(project, label, argv, timeout):
     except OSError as exc:
         return {"step": label, "outcome": "unavailable", "exit_code": None,
                 "excerpt": clean(exc)}
+    finally:
+        if cache:
+            cache.cleanup()
 
 def report(args):
     project = valid_project(args.project)

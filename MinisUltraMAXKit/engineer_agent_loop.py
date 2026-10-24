@@ -39,6 +39,7 @@ def status(project):
         "head": git(project, "rev-parse", "HEAD"),
         "branch": branch,
         "tracked_dirty": bool(git(project, "status", "--porcelain", "--untracked-files=no")),
+        "untracked": git(project, "ls-files", "--others", "--exclude-standard").splitlines(),
     }
 
 
@@ -53,13 +54,13 @@ def write_checkpoint(project, objective, report):
     autopilot.save_state(journal_path(project, objective), report)
 
 
-def call_bridge(executable, request, timeout):
+def call_bridge(executable, request, timeout, project):
     # No shell, provider fallback, hidden environment substitution, or prompt
     # execution. This process is itself trusted by explicit caller selection.
     done = subprocess.run(
         [str(executable)], input=json.dumps(request).encode("utf-8"),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout,
-        check=False,
+        cwd=str(project), check=False,
     )
     if len(done.stdout) > MAX_REPLY:
         raise ValueError("NO-GO: model bridge response oversized")
@@ -132,7 +133,7 @@ def run(project, objective, bridge, execute=False, approved=False,
             "rules": "One existing source file; unified git diff; no commands, installs or credentials.",
         }
         try:
-            reply = call_bridge(binary, request, timeout)
+            reply = call_bridge(binary, request, timeout, project)
         except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
             report["status"] = "blocked_model_bridge"
             report["bridge_error"] = autopilot.clean(str(exc))

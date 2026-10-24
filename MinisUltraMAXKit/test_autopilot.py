@@ -77,6 +77,23 @@ class AutoEngineerTests(unittest.TestCase):
         self.assertEqual(r["status"],"approval_required_for_package_build")
         self.assertEqual(r["executed"],[])
 
+    def test_fresh_python_cache_sees_same_size_same_mtime_edit(self):
+        target = self.project / "module.py"
+        target.write_text("VALUE=1\n")
+        (self.project / "test_module.py").write_text(
+            "import unittest, module\n"
+            "class T(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(module.VALUE,2)\n"
+        )
+        argv = autopilot.choose_steps(self.project)[0][1]
+        first = autopilot.execute(self.project, "python-tests", argv, 20)
+        self.assertEqual(first["outcome"], "failed")
+        orig = target.stat()
+        target.write_text("VALUE=2\n")
+        os.utime(target, ns=(orig.st_atime_ns, orig.st_mtime_ns))
+        second = autopilot.execute(self.project, "python-tests", argv, 20)
+        self.assertEqual(second["outcome"], "pass", second)
+
     def test_excludes_project_symlink(self):
         alias=Path(self.tmp.name)/"link"
         alias.symlink_to(self.project,target_is_directory=True)
