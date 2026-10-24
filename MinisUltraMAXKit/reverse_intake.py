@@ -159,10 +159,73 @@ def inspect(path,member=None,search="",at=None,count=24):
     result["analysis"]["slice_count"]=len(result["analysis"]["slices"])
     return result
 
+def search_package(path, query, max_files=48, max_bytes=256*1024*1024):
+    """Evidence search over all eligible binaries, never selecting by filename guess.
+
+    Bounded to 48 binaries / 256 MiB decompressed bytes. A partial result is
+    explicitly flagged and never treated as exhaustive.
+    """
+    if len(query.strip()) < 2:
+        raise IntakeError("binary search needs at least two characters")
+    path,kind=identify(path)
+    if kind=="macho":
+        found=core.analyze(path,query)
+        entries=[(path.name,found["slices"],path.stat().st_size)]
+    else:
+        entries=[]
+        used=0
+        filenames=[(name,size) for name,size in package_entries(path,kind) if candidate(name)]
+        hits=[]
+        skipped=[]
+        for name,size in filenames:
+            if len(entries)>=max_files or used+size>max_bytes:
+                skipped.append(name)
+                continue
+            used+=size
+            blob=read_entry(path,kind,name)
+            if blob[:4] not in MAGIC:
+                skipped.append(name)
+                continue
+            try:
+                slices=analyze_binary(blob,query,None,24)
+            except (core.ParseError,struct.error) as error:
+                skipped.append(name)
+                continue
+            entries.append((name,slices,size))
+        all_entries_count=len(filenames)
+    hits=[]
+    for name,slices,size in entries:
+        for item in slices:
+            symbols=item.get("matching_symbols",[])
+            nominal=item.get("swift_nominal_types",[])
+            objc=[]
+            swift_strings=[]
+            for values in item.get("objc_metadata",{}).values():
+                objc.extend(values.get("strings",[]))
+            for values in item.get("swift_metadata",{}).values():
+                swift_strings.extend(values.get("strings",[]))
+            if symbols or nominal or objc or swift_strings:
+                hits.append({"member":name,"architecture":item["architecture"],
+                             "symbol_matches":symbols[:32],
+                             "swift_nominal_matches":nominal[:32],
+                             "objc_name_matches":objc[:32],
+                             "swift_section_strings":swift_strings[:16]})
+    return {"status":"evidence_found" if hits else "no_evidence_found",
+            "query":query,"file":str(path),"kind":kind,
+            "examined_binaries":len(entries),"total_candidates":all_entries_count if kind!="macho" else 1,
+            "incomplete":bool(skipped) if kind!="macho" else False,
+            "skipped_binaries":skipped[:20] if kind!="macho" else [],
+            "matches":hits[:32],
+            "caveat":"Static name evidence is not proof of ABI, runtime authority, or Hook safety"}
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description="Read-only Mach-O IPA DEB inspection")
     sub=parser.add_subparsers(dest="action",required=True)
     sub.add_parser("doctor")
+    search_cmd=sub.add_parser("search")
+    search_cmd.add_argument("file")
+    search_cmd.add_argument("--search",required=True)
+    search_cmd.add_argument("--out")
     for name in ("inventory","analyze","disasm"):
         p=sub.add_parser(name)
         p.add_argument("file")
@@ -177,7 +240,7 @@ def main(argv=None):
         if not 1<=a.count<=128: raise IntakeError("count must be 1..128")
         if a.action=="disasm" and a.at is None:
             raise IntakeError("disasm requires --at vmaddr")
-        result=inspect(a.file,a.member,a.search[:128],a.at,a.count)
+        result=search_package(a.file,a.search.strip()[:128]) if a.action=="search" else inspect(a.file,a.member,a.search[:128],a.at,a.count)
         text=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
         if a.out:
             path=Path(a.out).expanduser()
