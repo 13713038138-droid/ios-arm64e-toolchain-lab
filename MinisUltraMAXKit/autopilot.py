@@ -121,9 +121,13 @@ def source_fingerprint(project):
             if file.is_symlink() or not file.is_file():
                 continue
             relative = file.relative_to(project)
-            stat = file.stat()
+            # Recovery integrity is based on bytes, not user-editable mtime.
             digest.update(str(relative).encode("utf-8", "replace"))
-            digest.update(f":{stat.st_size}:{stat.st_mtime_ns}".encode())
+            digest.update(b"\0")
+            with file.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            digest.update(b"\0")
             count += 1
             if count >= 4000:
                 return digest.hexdigest()

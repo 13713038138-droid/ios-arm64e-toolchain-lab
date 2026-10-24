@@ -90,5 +90,24 @@ class AutoEngineerTests(unittest.TestCase):
         self.assertEqual(steps[0][1][1:],["-m","unittest","discover","-s",".","-p","test_*.py"])
         self.assertFalse(any("shell" in repr(s) or "sudo" in repr(s) for s in steps))
 
+    def test_source_hash_detects_equal_size_equal_mtime_tampering(self):
+        target = self.project / "module.py"
+        target.write_bytes(b"VALUE=1\n")
+        before = autopilot.source_fingerprint(self.project)
+        stat = target.stat()
+        target.write_bytes(b"VALUE=2\n")
+        os.utime(target, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+        self.assertEqual(target.stat().st_size, len(b"VALUE=1\n"))
+        self.assertEqual(target.stat().st_mtime_ns, stat.st_mtime_ns)
+        self.assertNotEqual(before, autopilot.source_fingerprint(self.project))
+
+    def test_same_content_still_matches_after_touch(self):
+        target = self.project / "module.py"
+        target.write_bytes(b"VALUE=1\n")
+        before = autopilot.source_fingerprint(self.project)
+        stat = target.stat()
+        os.utime(target, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1000000000))
+        self.assertEqual(before, autopilot.source_fingerprint(self.project))
+
 if __name__=="__main__":
     unittest.main()
