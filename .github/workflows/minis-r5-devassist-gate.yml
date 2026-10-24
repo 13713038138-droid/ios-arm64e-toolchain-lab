@@ -41,6 +41,8 @@ jobs:
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_source_patch.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_auto_engineer_cycle.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_engineer_recovery.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_engineer_agent_loop.py" -v
+          sh -n MinisUltraMAXKit/runtime/minis-engineer
           sh -n MinisUltraMAXKit/runtime/minis-resume
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_lab.py" -v

@@ -50,6 +50,12 @@ RULES={
     "provider_quota_safe_engineer_recovery":(
        "src/ios/default_mount/usr/local/lib/minis-dev-ultra/engineer_recovery.py",
        ("def classify_http_error(", "def local_resume(", "automatic_model_retry",)),
+    "bounded_model_bridge_engineering_loop":(
+       "src/ios/default_mount/usr/local/lib/minis-dev-ultra/engineer_agent_loop.py",
+       ("def call_bridge(", "def run(", "candidate_tests_passed")),
+    "agent_loop_cli":(
+       "src/ios/default_mount/usr/local/bin/minis-engineer",
+       ("engineer_agent_loop.py",)),
     "recovery_cli":(
        "src/ios/default_mount/usr/local/bin/minis-resume",
        ("engineer_recovery.py",)),

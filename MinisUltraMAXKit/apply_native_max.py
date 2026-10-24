@@ -269,6 +269,10 @@ engineer_recovery = extra.with_name("engineer_recovery.py")
 assert not engineer_recovery.exists(), "NO-GO: refusing to overwrite existing recovery"
 shutil.copy2(Path(__file__).with_name("engineer_recovery.py"), engineer_recovery)
 engineer_recovery.chmod(0o644)
+agent_loop = extra.with_name("engineer_agent_loop.py")
+assert not agent_loop.exists(), "NO-GO: refusing to overwrite existing agent loop"
+shutil.copy2(Path(__file__).with_name("engineer_agent_loop.py"), agent_loop)
+agent_loop.chmod(0o644)
 reverse_analyzer = extra.with_name("reverse_lab.py")
 assert not reverse_analyzer.exists(), "NO-GO: refusing to overwrite preexisting ReverseLab"
 shutil.copy2(Path(__file__).with_name("reverse_lab.py"), reverse_analyzer)
@@ -302,6 +306,7 @@ tool_targets = [
     (runtime_dir / "minis-reverse", mount / "usr/local/bin/minis-reverse", 0o755),
     (runtime_dir / "minis-reverse-hook", mount / "usr/local/bin/minis-reverse-hook", 0o755),
     (runtime_dir / "minis-resume", mount / "usr/local/bin/minis-resume", 0o755),
+    (runtime_dir / "minis-engineer", mount / "usr/local/bin/minis-engineer", 0o755),
     (runtime_dir / "minis-tk", mount / "usr/local/bin/minis-tk", 0o755),
     (runtime_dir / "minis-deb", mount / "usr/local/bin/minis-deb", 0o755),
     (runtime_dir / "minis-abi", mount / "usr/local/bin/minis-abi", 0o755),

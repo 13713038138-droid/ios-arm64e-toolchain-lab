@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+case "$0" in
+  */*) script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd);;
+  *) script_dir=/usr/local/bin;;
+esac
+. "$script_dir/../lib/minis-dev-ultra/ensure-python3.sh"
+exec "$MINIS_PYTHON3" "$script_dir/../lib/minis-dev-ultra/engineer_agent_loop.py" "$@"
