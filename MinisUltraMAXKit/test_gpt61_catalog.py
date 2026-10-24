@@ -19,6 +19,8 @@ LLM = '''    static let gpt6Sol = LLMModel(
         .gpt6Astra, .gpt6Sol, .gpt6Luna,
     ]
 '''
+STANDALONE = r'''    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))
+'''
 THINKING = '''    private static let rules: [(match: (String) -> Bool, max: ThinkingLevel)] = [
         ({ $0.hasPrefix("gpt-6-astra") }, .max),
     ]
@@ -72,6 +74,7 @@ class Tests(unittest.TestCase):
             "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift": AGENT,
             "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift": API,
             "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift": TESTS,
+            "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift": STANDALONE,
         }
         for rel, content in data.items():
             p = root / rel
@@ -85,6 +88,7 @@ class Tests(unittest.TestCase):
         patch.verify(root)
         types = (root / "src/ios/Providers/LLMTypes.swift").read_text()
         self.assertIn('id: "gpt-6.1-sol"', types)
+        self.assertIn("client version is at least 0.155.0 (numeric)", (root / "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift").read_text())
         codex_start = types.index("static let allOpenAICodexOAuth: [LLMModel] =")
         codex_body = types[codex_start:types.index("\n    ]", codex_start)]
         self.assertNotIn(".gpt61Sol", codex_body, "unsupported Codex accounts must not receive a static model seed")
