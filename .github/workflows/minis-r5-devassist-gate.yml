@@ -70,7 +70,7 @@ jobs:
           test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse"
           MINIS_DEV_ULTRA_LIB="$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra" "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse" doctor | grep -q '"runtime_hooking": false'
           python3 MinisUltraMAXKit/patch_share_handoff.py "$RUNNER_TEMP/OpenMinis"
-          python3 MinisUltraMAXKit/release_capabilities.py --source-tree "$RUNNER_TEMP/OpenMinis" --level core > "$RUNNER_TEMP/minis-r56-parity-core.json"
+          python3 MinisUltraMAXKit/release_capabilities.py --source-tree "$RUNNER_TEMP/OpenMinis" --level core | tee "$RUNNER_TEMP/minis-r56-parity-core.json"
           grep -q '"status": "PASS"' "$RUNNER_TEMP/minis-r56-parity-core.json"
           grep -q "guard saved else" "$RUNNER_TEMP/OpenMinis/src/ios/ShareExtension/ShareViewController.swift"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-autopilot/SKILL.md"
