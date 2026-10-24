@@ -40,6 +40,8 @@ jobs:
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_autopilot.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_source_patch.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_auto_engineer_cycle.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_engineer_recovery.py" -v
+          sh -n MinisUltraMAXKit/runtime/minis-resume
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_lab.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_disasm.py" -v
@@ -68,6 +70,8 @@ jobs:
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/source_patch.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/auto_engineer_cycle.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/engineer_recovery.py"
+          test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-resume"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_lab.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_intake.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_disasm.py"
