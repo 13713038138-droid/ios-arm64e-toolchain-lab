@@ -34,7 +34,7 @@ def fixture(subtype=2):
     buf[0x620:0x62b] = b"WidgetCore\0"
     buf[0x680:0x688] = b"UIProbe\0"
     struct.pack_into("<IBBHQ",buf,0x700,1,0x0f,1,0,VM+0x400)
-    buf[0x750:0x75e] = b"\0_$sWidgetCore\0"
+    buf[0x750:0x750+len(b"\0_$sWidgetCore\0")] = b"\0_$sWidgetCore\0"
     buf[0x810:0x813] = b"\x80\x08\x00"
     return bytes(buf)
 
