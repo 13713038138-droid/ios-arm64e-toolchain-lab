@@ -15,10 +15,11 @@ class NonExpertAssistTests(unittest.TestCase):
         r = devctl.classify_development_error(
             'HTTP 400 {"detail":"The gpt-6.1-sol model is not supported when using Codex with a ChatGPT account."}'
         )
-        self.assertEqual(r["category"], "codex_unavailable")
+        self.assertEqual(r["category"], "codex_route_denied")
         self.assertFalse(r["can_fix_without_more_evidence"])
         self.assertFalse(r["category"] == "bad_reasoning")
-        self.assertIn("备份", r["next_action"])
+        self.assertIn("原版", r["next_action"])
+        self.assertNotIn("账号没有权限", r["meaning"])
 
     def test_unknown_400_requires_error_detail(self):
         r = devctl.classify_development_error("出现 HTTP 400")
