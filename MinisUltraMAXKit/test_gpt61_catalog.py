@@ -19,6 +19,8 @@ LLM = '''    static let gpt6Sol = LLMModel(
         .gpt6Astra, .gpt6Sol, .gpt6Luna,
     ]
 '''
+STANDALONE = r'''    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))
+'''
 THINKING = '''    private static let rules: [(match: (String) -> Bool, max: ThinkingLevel)] = [
         ({ $0.hasPrefix("gpt-6-astra") }, .max),
     ]
@@ -28,6 +30,7 @@ PROVIDER = '''    static let codexClientVersion = "0.155.0"
         if forceResponsesAPI { return false }
         if !isOAuth { return true }
     }
+        // Try to extract error message from JSON body
 '''
 AGENT = '''        guard !level.isEnabled else { return nil }
         if provider.customBaseURL == nil && !provider.isAzure { return "none" }
@@ -71,6 +74,7 @@ class Tests(unittest.TestCase):
             "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift": AGENT,
             "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift": API,
             "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift": TESTS,
+            "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift": STANDALONE,
         }
         for rel, content in data.items():
             p = root / rel
@@ -84,12 +88,18 @@ class Tests(unittest.TestCase):
         patch.verify(root)
         types = (root / "src/ios/Providers/LLMTypes.swift").read_text()
         self.assertIn('id: "gpt-6.1-sol"', types)
+        self.assertIn("client version is at least 0.155.0 (numeric)", (root / "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift").read_text())
+        codex_start = types.index("static let allOpenAICodexOAuth: [LLMModel] =")
+        codex_body = types[codex_start:types.index("\n    ]", codex_start)]
+        self.assertNotIn(".gpt61Sol", codex_body, "unsupported Codex accounts must not receive a static model seed")
+        self.assertIn('XCTAssertFalse(ids.contains("gpt-6.1-sol")', (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text())
         self.assertIn("contextWindow: 1_050_000", types)
         self.assertIn("maxOutputTokens: 128_000", types)
         self.assertIn('reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]', types)
         self.assertIn(".gpt61Sol", types[types.index("static let allOpenAI: [LLMModel] ="):types.index("static let allOpenAICodexOAuth: [LLMModel] =")])
         provider = (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text()
-        self.assertIn('static let codexClientVersion = "0.159.1"', provider)
+        self.assertIn('static let codexClientVersion = "0.163.0"', provider)
+        self.assertIn('detail.localizedCaseInsensitiveContains("not supported when using Codex")', provider)
         self.assertIn('model.id.lowercased() == "gpt-6.1-sol"', provider)
         self.assertIn("customBaseURL == nil, !isAzure", provider)
         agent = (root / "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift").read_text()

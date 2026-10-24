@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""R5 patch: expose GPT-6.1-Sol in the iOS Codex OAuth catalog safely."""
+"""R5 patch: support GPT-6.1 Sol while respecting Codex account capabilities."""
 from pathlib import Path
 import sys
 
@@ -27,8 +27,9 @@ def patch_types(s):
         supportsReasoning: true
     )
 '''
-    entry = '''    /// GPT-6.1 Sol is available through Codex OAuth on eligible ChatGPT accounts.
-    /// Keep static metadata authoritative when the live catalog omits these fields.
+    entry = '''    /// GPT-6.1 Sol is supported as an OpenAI API model.
+    /// Do not add it to the Codex OAuth static fallback catalog: account
+    /// availability must come from the live authenticated backend response.
     static let gpt61Sol = LLMModel(
         id: "gpt-6.1-sol",
         displayName: "GPT-6.1-Sol",
@@ -58,9 +59,9 @@ def patch_types(s):
     ]''',
         "OpenAI API-key fallback model list",
     )
-    return replace_once(s, "        .gpt6Astra, .gpt6Sol, .gpt6Luna,",
-                        "        .gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,",
-                        "Codex OAuth model list")
+    # Do not advertise GPT-6.1 Sol to Codex OAuth before backend discovery.
+    # The API-key fallback remains independent of the ChatGPT account session.
+    return s
 
 def patch_thinking(s):
     return replace_once(
@@ -76,12 +77,14 @@ def patch_provider(s):
     s = replace_once(
         s,
         '    static let codexClientVersion = "0.155.0"',
-        '''    // GPT-6.1 Sol is withheld from the Codex model catalog for client versions
-    // below 0.159.0 despite its registry minimum; 0.159.1 is the release baseline
-    // that includes the model. This value feeds discovery and request headers.
-    static let codexClientVersion = "0.159.1"''',
+        '''    // Candidate Codex 0.163.0 compatibility profile: a public issue observed
+    // the identical gpt-6.1-sol HTTP 400 on an older client and a working
+    // request after updating the real Codex CLI to 0.163.0. This is a
+    // compatibility candidate, NOT evidence that Minis implements every
+    // transport behavior of that CLI or that any account is entitled.
+    static let codexClientVersion = "0.163.0"''',
         "Codex client-version gate")
-    return replace_once(
+    s = replace_once(
         s,
         '''    var usesChatCompletionsAPI: Bool {
         if forceResponsesAPI { return false }
@@ -98,6 +101,25 @@ def patch_provider(s):
         }
         if !isOAuth { return true }''',
         "GPT-6.1 Sol official Responses API routing")
+    # Preserve the Codex backend's specific account-model denial instead of
+    # displaying a misleading generic 400 or silently falling back.
+    return replace_once(
+        s,
+        '        // Try to extract error message from JSON body\n',
+        '''        // GPT-6.1 restore can add a model entry without granting access to it.
+        // Only classify the exact server denial; other HTTP 400s remain intact.
+        if statusCode == 400,
+           let data = body.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let detail = (json["detail"] as? String)
+               ?? ((json["error"] as? [String: Any])?["message"] as? String),
+           detail.localizedCaseInsensitiveContains("not supported when using Codex") {
+            return .providerError(
+                message: "HTTP 400: this Codex request path rejected the selected model. The original Minis may use a working client version or auth context; this alone does NOT prove account-wide ineligibility. Compare model discovery and request metadata, without copying credentials. Server: \(String(detail.prefix(240)))")
+        }
+        // Try to extract error message from JSON body
+''',
+        "Codex account model denial clarity")
 
 
 def patch_agent(s):
@@ -226,7 +248,7 @@ def patch_tests(s):
         '        XCTAssertEqual(LLMModel.gpt61Sol.id, "gpt-6.1-sol")', "reasoning entry test")
     s = replace_once(s, '        XCTAssertTrue(ids.contains("gpt-6-luna"))',
         '        XCTAssertTrue(ids.contains("gpt-6-luna"))\n'
-        '        XCTAssertTrue(ids.contains("gpt-6.1-sol"))', "OAuth picker test")
+        '        XCTAssertFalse(ids.contains("gpt-6.1-sol"), "Codex fallback must not imply entitlement")', "OAuth picker test")
     s = replace_once(s, '        XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)',
         '        XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)\n'
         '        XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6.1-sol"), .max)', "thinking ceiling test")
@@ -236,9 +258,22 @@ def patch_tests(s):
         '        for id in ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"] {', "nil-flag regression test")
     old = '''        XCTAssertTrue(atLeast(OpenAIProvider.codexClientVersion, "0.155.0"),
                       "gpt-6-sol / gpt-6-luna need >= 0.155.0, got \\(OpenAIProvider.codexClientVersion)")'''
-    new = old + '''\n        XCTAssertTrue(atLeast(OpenAIProvider.codexClientVersion, "0.159.1"),
-                      "gpt-6.1-sol needs the 0.159.1 Codex client baseline, got \\(OpenAIProvider.codexClientVersion)")'''
+    new = old + '''\n        XCTAssertTrue(atLeast(OpenAIProvider.codexClientVersion, "0.163.0"),
+                      "gpt-6.1-sol needs the 0.163.0 Codex client baseline, got \\(OpenAIProvider.codexClientVersion)")'''
     return replace_once(s, old, new, "client-version regression test")
+
+def patch_standalone_model_discovery_test(s):
+    # The upstream standalone test checks that the client version STRING has
+    # a "0.155." prefix. That breaks on every legitimate version increase,
+    # including 0.163.0. Check the numeric floor instead, without reducing it.
+    old = r'    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))'
+    new = '''    let marker = "codexClientVersion = \\""
+    let segments = provider.components(separatedBy: marker)
+    let v = segments.count > 1 ? String(segments[1].prefix(while: { $0 != "\\"" })) : ""
+    let digits = v.split(separator: ".").compactMap { Int($0) }
+    let enough = digits.count == 3 && (digits[0] * 1_000_000 + digits[1] * 1_000 + digits[2] >= 155_000)
+    check("client version is at least 0.155.0 (numeric)", enough)'''
+    return replace_once(s, old, new, "upstream stale exact-prefix standalone test")
 
 def verify(root):
     t = (root / "src/ios/Providers/LLMTypes.swift").read_text(encoding="utf-8")
@@ -257,13 +292,15 @@ def verify(root):
         'contextWindow: 1_050_000' in t and 'maxOutputTokens: 128_000' in t,
         'reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]' in t,
         '.gpt61Sol' in t[all_openai_start:all_codex_start],
-        '.gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,' in t,
+        '.gpt6Astra, .gpt6Sol, .gpt6Luna,' in t and
+            '.gpt61Sol' not in t[all_codex_start:t.index("\n    ]", all_codex_start)],
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
-        'static let codexClientVersion = "0.159.1"' in p,
+        'static let codexClientVersion = "0.163.0"' in p,
         'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
+        'detail.localizedCaseInsensitiveContains("not supported when using Codex")' in p,
         'if lid == "gpt-6.1-sol" { return "low" }' in agent,
-        'XCTAssertTrue(ids.contains("gpt-6.1-sol"))' in x and 'LLMModel.gpt61Sol' in x,
-        'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
+        'XCTAssertFalse(ids.contains("gpt-6.1-sol")' in x and 'LLMModel.gpt61Sol' in x,
+        'atLeast(OpenAIProvider.codexClientVersion, "0.163.0")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
         'appendKnownGPT61SolIfFamilyAvailable' not in api,
@@ -274,6 +311,7 @@ def verify(root):
         'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: model, level: .medium), "medium"' in x,
         'testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint' in x,
         'testGPT61SolPreservesCustomEndpointRouting' in x,
+        'client version is at least 0.155.0 (numeric)' in (root / "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift").read_text(encoding="utf-8"),
     ]
     if not all(checks):
         raise RuntimeError("NO-GO GPT61: post-patch source verification failed")
@@ -285,6 +323,7 @@ def apply(root):
     edit(root, "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift", patch_agent)
     edit(root, "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift", patch_models_api)
     edit(root, "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift", patch_tests)
+    edit(root, "src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift", patch_standalone_model_discovery_test)
     verify(root)
 
 def main(argv=None):

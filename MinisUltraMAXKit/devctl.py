@@ -833,6 +833,105 @@ def cmd_hook(args):
 
 
 
+
+# R5.3: explain failures in plain language and select a safe NEXT action.
+# This is classification, not remote entitlement inspection or self-executing repair.
+def classify_development_error(message):
+    raw = str(message or "")[-65536:]
+    normalized = raw.lower()
+    codes = {
+        "codex_route_denied": (
+            "当前 Codex 客户端调用路径遭到模型拒绝（账号本身是否有权限尚未证明）",
+            "比较原版与 MAX 的真实模型 ID、账号身份、Version、端点和请求参数；备份中的模型记录不能证明请求兼容。",
+            ["核实原版已能成功回复：确定模型 ID 和供应商凭据类型（不读取令牌）",
+             "比对 MAX 的 Codex 客户端版本、模型目录、账号 ID 哈希、端点与非敏感字段",
+             "在独立候选中验证与真实新版 Codex 兼容的请求，再进行真机验收",
+             "无法确定时保留可回退旧版，勿将 400 当作账号全局无权限"]),
+        "bad_reasoning": (
+            "推理参数与模型不兼容",
+            "核对服务端接受的 reasoning.effort 档位，构造单轮最小请求并回归原设置。",
+            ["确认当前请求模型 ID 和接口", "记录被拒绝的 effort 值（不要记录凭据）",
+             "仅改该模型的推理映射，先测试 low，再测试其余已声明档位"]),
+        "bad_schema": (
+            "请求格式不被目标接口接受",
+            "按错误指出的字段或端点做最小差异修复，不修改其他供应商路由。",
+            ["定位 HTTP 400 正文中的字段名", "对照该端点当前的请求协议",
+             "先重放单轮最小请求，再运行多轮及工具调用回归"]),
+        "unknown_model": (
+            "模型 ID 或服务端模型目录不匹配",
+            "保留用户配置但不要把恢复的模型当成已获授权；核对在线目录的真实 ID。",
+            ["查看当前账号在线模型目录", "对照备份中的模型 ID",
+             "不要猜测或自动替换为未经确认的别名"]),
+        "generic_400": (
+            "请求被服务端拒绝，但仅凭 HTTP 400 无法确定原因",
+            "获取脱敏后的完整错误正文；暂不改变模型权限、推理映射或 API 端点。",
+            ["复制模型请求的错误详情（只保留状态码与 detail/error.message）",
+             "确认所用账号类型、模型 ID 和请求接口",
+             "根据具体错误再决定修改哪一个最小参数"]),
+        "missing_sdk": (
+            "当前编译环境缺少可用 SDK",
+            "先检测现有 Theos/Xcode SDK 和编译器，复用已验证的构建环境。",
+            ["检查项目 TARGET/ARCHS/SDK", "确认本机是否有匹配的 iPhoneOS SDK",
+             "SDK 不可用时停在构建前，不冒充生成了安装包"]),
+        "build_failed": (
+            "编译或链接出错",
+            "从第一条明确的编译错误入手修一处并重跑最小目标；避免大面积盲目改动。",
+            ["保存首条 error/fatal error 和上下文", "核对源码版本和架构",
+             "修补最小差异、重跑编译与回归", "保留上一个可用构建供回退"]),
+    }
+    if ("not supported when using codex" in normalized or
+        "not supported with a chatgpt account" in normalized or
+        "model is not supported when using codex" in normalized):
+        kind = "codex_route_denied"
+    elif ("reasoning_effort" in normalized or "reasoning.effort" in normalized or
+          "invalid effort" in normalized) and ("400" in normalized or "invalid" in normalized or "unsupported" in normalized):
+        kind = "bad_reasoning"
+    elif ("unknown field" in normalized or "unrecognized key" in normalized or
+          "missing required parameter" in normalized or "invalid_request_error" in normalized):
+        kind = "bad_schema"
+    elif ("model_not_found" in normalized or "invalid model" in normalized or
+          "unknown model" in normalized):
+        kind = "unknown_model"
+    elif ("400" in normalized or "bad request" in normalized):
+        kind = "generic_400"
+    elif ("sdk not found" in normalized or "iphoneos sdk" in normalized and "missing" in normalized):
+        kind = "missing_sdk"
+    elif any(term in normalized for term in ("error:", "fatal error", "undefined symbols", "build failed", "linker command failed")):
+        kind = "build_failed"
+    else:
+        return {
+            "category": "need_evidence", "confirmed": False, "can_fix_without_more_evidence": False,
+            "meaning": "没有足够的失败证据", "next_action": "先读取现有项目、日志和最近一个任务检查点，不要猜测原因。",
+            "safe_steps": ["从可用日志中找第一条真实失败", "用最小复现确认", "再选择修复路径"],
+            "needs_external_approval": False,
+        }
+    title, action, steps = codes[kind]
+    return {
+        "category": kind, "confirmed": kind != "generic_400",
+        "can_fix_without_more_evidence": kind in ("bad_reasoning", "bad_schema", "missing_sdk", "build_failed"),
+        "meaning": title, "next_action": action, "safe_steps": steps,
+        "needs_external_approval": False,
+        "note": "分类依据输入文本；不是服务器授权证明，也没有执行修复或生成安装包。",
+    }
+
+
+def cmd_assist(args):
+    evidence = args.error or ""
+    if args.log:
+        target = pathlib.Path(args.log)
+        if not target.is_file():
+            raise FileNotFoundError(str(target))
+        with target.open("rb") as stream:
+            stream.seek(max(0, target.stat().st_size - 131072))
+            evidence += "\n" + stream.read(131072).decode("utf-8", errors="replace")
+    result = classify_development_error(evidence)
+    result["source"] = "user_error" if args.error else ("log" if args.log else "none")
+    result["stage"] = args.stage
+    result["safe_to_retry_unchanged"] = result["category"] not in (
+        "codex_route_denied", "generic_400", "unknown_model", "bad_schema", "bad_reasoning")
+    emit(result, args.out)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Minis Dev Ultra MAX reproducible offline developer tools")
     sp = p.add_subparsers(dest="command", required=True)
@@ -848,6 +947,10 @@ def main(argv=None):
     add("inspect", cmd_inspect, "path")
     q = add("triage", cmd_triage, "path")
     q.add_argument("--limit", type=int, default=15)
+    q = add("assist", cmd_assist)
+    q.add_argument("--error", default="", help="HTTP/provider/build error without credentials")
+    q.add_argument("--log", help="Optional existing log; bounded tail read")
+    q.add_argument("--stage", default="diagnose", help="Development stage")
     add("scan-secrets", cmd_secrets, "path")
     add("diffzip", cmd_diff, "old", "new")
     q = sp.add_parser("manifest"); q.add_argument("path"); q.add_argument("--out", required=True); q.set_defaults(func=cmd_manifest)

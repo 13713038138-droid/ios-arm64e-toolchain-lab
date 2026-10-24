@@ -1,0 +1,80 @@
+name: Minis R5.3 nonexpert + model-400 isolated gates
+
+on:
+  push:
+    branches:
+      - minis-r5-400-devcontinuation-20261024
+    paths:
+      - "MinisUltraMAXKit/**"
+      - ".github/workflows/minis-r5-devassist-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source and Python syntax
+        run: |
+          set -euo pipefail
+          python3 -m py_compile MinisUltraMAXKit/*.py
+          python3 - <<'PY'
+          from pathlib import Path
+          c = Path("MinisUltraMAXKit/apply_native_max.py").read_text()
+          w = Path(".github/workflows/minis-max-r5-private-source-build.yml").read_text()
+          for value in ('case "devcontinue"', 'case "devfix"', '## Model 400 decision gate'):
+              assert value in c, value
+          assert "test_devassist.py" in w
+          assert "detail.localizedCaseInsensitiveContains" in Path("MinisUltraMAXKit/patch_gpt61_catalog.py").read_text()
+          print("PASS: native slash registration, recovery rules and workflow gates present")
+          PY
+      - name: Portable R5 regressions
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_devassist.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_gpt61_catalog.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_devctl.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_taskctl.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_tk_optimizer.py" -v
+      - name: Apply changes to real pinned OpenMinis source (build-free gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/OpenMinis"
+          git -C "$RUNNER_TEMP/OpenMinis" remote add origin https://github.com/OpenMinis/OpenMinis.git
+          git -C "$RUNNER_TEMP/OpenMinis" fetch --depth 1 origin b4c0661d5631ebab4d1a2e6f3fd4c805d4030a6c
+          git -C "$RUNNER_TEMP/OpenMinis" checkout --detach FETCH_HEAD
+          python3 MinisUltraMAXKit/apply_native_max.py "$RUNNER_TEMP/OpenMinis"
+          python3 MinisUltraMAXKit/patch_gpt61_catalog.py "$RUNNER_TEMP/OpenMinis"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
+          grep -q 'case "devcontinue"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'case "devfix"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'installBundledContinuationSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-continuation/SKILL.md"
+          grep -q "^name: minis-dev-continuation" "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-continuation/SKILL.md"
+          grep -q 'detail.localizedCaseInsensitiveContains' "$RUNNER_TEMP/OpenMinis/src/ios/Providers/OpenAI/OpenAIProvider.swift"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" assist --error 'HTTP 400' | grep -q '"generic_400"'
+          echo "PASS: exact pinned upstream source patched; not an IPA compile/device pass"
+      - name: Standalone Swift model regression (not Simulator XCTest)
+        run: |
+          set -euo pipefail
+          swift MinisUltraMAXKit/R5_GPT61_MODEL_PORTABLE.swift "$RUNNER_TEMP/OpenMinis"
+          swift "$RUNNER_TEMP/OpenMinis/src/ios/MinisTests/Standalone/CodexModelDiscoveryTests.swift"
+          echo "PASS: standalone Swift tests only; full iOS Simulator XCTest is unsupported by device-only iSH libs"
+
+
+      - name: Confirm generic 400 is not treated as authorized
+        run: |
+          set -euo pipefail
+          python3 MinisUltraMAXKit/devctl.py assist --error "HTTP 400" > /tmp/triage.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open("/tmp/triage.json"))
+          assert x["category"]=="generic_400"
+          assert not x["can_fix_without_more_evidence"]
+          print("PASS: no false model permission claims")
+          PY
