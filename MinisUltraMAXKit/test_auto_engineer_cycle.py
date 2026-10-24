@@ -77,6 +77,21 @@ class EngineerCycleTests(unittest.TestCase):
         self.assertEqual(second["checks"], [])
         self.assertEqual((self.project / "module.py").read_text(), "VALUE = 1\n")
 
+    def test_dirty_branch_repeated_failure_is_not_rerun(self):
+        # An edited source file makes Git dirty, but the same failed test should
+        # never run again until the actual source or runner changes.
+        (self.project / "module.py").write_text("VALUE = 3\n")
+        first = self.cycle()
+        self.assertEqual(first["status"], "needs_source_repair")
+        second = self.cycle()
+        self.assertEqual(second["status"], "blocked_repeat_failure")
+        self.assertEqual(second["checks"], [])
+        self.assertEqual(first["source_signature"], second["source_signature"])
+        (self.project / "module.py").write_text("VALUE = 2\n")
+        third = self.cycle()
+        self.assertEqual(third["status"], "verified_checks_passed")
+        self.assertNotEqual(third["source_signature"], second["source_signature"])
+
     def test_source_edit_requires_approval(self):
         out = self.cycle(patch=str(self.patch), expected_head=self.head)
         self.assertEqual(out["status"], "approval_required_for_source_edit")
