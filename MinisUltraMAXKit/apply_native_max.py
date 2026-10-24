@@ -273,6 +273,10 @@ reverse_archive = extra.with_name("reverse_intake.py")
 assert not reverse_archive.exists(), "NO-GO: refusing to overwrite preexisting ReverseLab archive executor"
 shutil.copy2(Path(__file__).with_name("reverse_intake.py"), reverse_archive)
 reverse_archive.chmod(0o644)
+llvm_decoder = extra.with_name("reverse_disasm.py")
+assert not llvm_decoder.exists(), "NO-GO: refusing to overwrite preexisting LLVM reverse decoder"
+shutil.copy2(Path(__file__).with_name("reverse_disasm.py"), llvm_decoder)
+llvm_decoder.chmod(0o644)
 deb_factory = extra.with_name("deb_factory.py")
 assert not deb_factory.exists(), "NO-GO: refusing to overwrite preexisting local DEB factory"
 shutil.copy2(Path(__file__).with_name("deb_factory.py"), deb_factory)
