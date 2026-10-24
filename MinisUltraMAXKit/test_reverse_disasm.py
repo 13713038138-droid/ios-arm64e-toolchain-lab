@@ -30,7 +30,7 @@ class NativeDisasmTests(unittest.TestCase):
         self.assertEqual(out,[])
         self.assertIn("time limit",error)
 
-    @unittest.skipUnless(shutil.which("llvm-objdump") and shutil.which("clang"),
+    @unittest.skipUnless(real.executable() and shutil.which("clang"),
                          "real LLVM compiler and objdump not installed")
     def test_genuine_clang_arm64_macho_disassembly(self):
         with tempfile.TemporaryDirectory() as directory:
