@@ -94,6 +94,30 @@ class EngineerCycleTests(unittest.TestCase):
         self.assertEqual(third["status"], "verified_checks_passed")
         self.assertNotEqual(third["source_signature"], second["source_signature"])
 
+    def test_interrupted_execution_saves_real_inflight_checkpoint(self):
+        from unittest.mock import patch
+        with patch("auto_engineer_cycle.autopilot.execute", side_effect=KeyboardInterrupt()):
+            with self.assertRaises(KeyboardInterrupt):
+                self.cycle()
+        path=auto_engineer_cycle.safe_checkpoint(self.project,"Fix broken test")
+        saved=json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(saved["status"],"running_checks")
+        self.assertEqual(saved["current_step"],"python-tests")
+        self.assertEqual(saved["checks"],[])
+        self.assertFalse(saved["device_verified"])
+        report=self.cycle(execute=False)
+        self.assertEqual(report["previous_checkpoint"]["status"],"running_checks")
+        self.assertEqual(report["previous_checkpoint"]["current_step"],"python-tests")
+
+    def test_status_flag_does_not_execute_failing_tests(self):
+        import sys
+        command=[sys.executable,str(Path(auto_engineer_cycle.__file__)),
+                 "--project",str(self.project),"--objective","Fix broken test","--status"]
+        p=subprocess.run(command,capture_output=True,text=True,check=False)
+        self.assertEqual(p.returncode,0,p.stderr)
+        self.assertEqual(json.loads(p.stdout)["status"],"no_checkpoint")
+        self.assertFalse(self.state.exists())
+
     def test_source_edit_requires_approval(self):
         out = self.cycle(patch=str(self.patch), expected_head=self.head)
         self.assertEqual(out["status"], "approval_required_for_source_edit")
