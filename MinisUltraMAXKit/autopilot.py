@@ -104,7 +104,7 @@ def choose_steps(project):
     # Discovery reads only filenames, not private code, commands or credentials.
     # Explicit fixed argv, no shell, no automatically executing project scripts.
     steps = []
-    if (project / "pyproject.toml").exists() or list(project.glob("test_*.py")) or (project / "tests").is_dir():
+    if list(project.glob("test_*.py")) or list(project.glob("tests/test_*.py")):
         py = shutil.which("python3") or shutil.which("python")
         if py:
             steps.append(("python-tests", [py, "-m", "unittest", "discover", "-s", ".", "-p", "test_*.py"]))
@@ -130,7 +130,7 @@ def execute(project, label, argv, timeout):
         done = subprocess.run(argv, cwd=str(project), capture_output=True,
                               timeout=timeout, check=False, env=env)
         output = (done.stdout + b"\n" + done.stderr)[-8192:].decode("utf-8", "replace")
-        return {"step": label, "outcome": "pass" if done.returncode == 0 else "failed",
+        return {"step": label, "outcome": ("not_verified" if done.returncode == 0 and label == "python-tests" and "Ran 0 tests" in output else ("pass" if done.returncode == 0 else "failed")),
                 "exit_code": done.returncode, "excerpt": clean(output)}
     except subprocess.TimeoutExpired as exc:
         return {"step": label, "outcome": "timeout", "exit_code": None,
