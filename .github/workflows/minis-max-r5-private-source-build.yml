@@ -48,6 +48,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_taskctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_gpt61_catalog.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devassist.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_deb_factory.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_abi_v2_gate.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_gpt61_catalog.py" -v
@@ -102,6 +103,9 @@ jobs:
           grep -q 'installBundledUltraSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
           grep -q 'case "devmax"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'case "devhook"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'case "devcontinue"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'case "devfix"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" assist --error 'HTTP 400' | grep -q '"category": "generic_400"'
           grep -q 'minis-dev-ultra hook --name NAME' "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
           grep -q '^## Specialist references' "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-ultra/SKILL.md"
@@ -309,7 +313,7 @@ jobs:
             echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
             echo 'GPT-6.1-Sol: Codex OAuth catalog + dynamic-response reasoning fallback + reasoning rule + Codex client Version 0.159.1; Release simulator XCTest validates catalog/routing and the binary check verifies the client-version marker. Live account entitlement remains unverified.'
             echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
-            echo 'Developer tools: 19 specialist references, automatic routing, token/log optimizer, Python bootstrap, static binary inspection, local DEB factory, ABI-v2 preflight, checkpoint journal, skill ZIP hardening and chat layout optimization.'
+            echo 'Developer tools: 19 specialist references, automatic routing, nonexpert Continue/Fix workflow, HTTP 400 triage, token/log optimizer, Python bootstrap, static binary inspection, local DEB factory, ABI-v2 preflight, checkpoint journal, skill ZIP hardening and chat layout optimization.'
             echo 'Not claimed: full native IDE, persistent background daemon, full Apple SDK download manager, C-function hook ABI inference or live ChatGPT entitlement validation.'
             echo 'Original Stheno source repositories were not checked out or modified.'
             echo 'Source manifest (SHA-256):'
@@ -344,6 +348,7 @@ jobs:
           Included:
           - GPT-6.1-Sol Codex OAuth picker entry, dynamic-response reasoning fallback when the backend omits the flag, reasoning ceiling, Codex client Version 0.159.1, Release simulator XCTest for catalog/effort/routing, and compiled client-version marker check.
           - HookLab slash command and evidence-first pass-through Logos scaffolding for verified Objective-C class methods.
+          - Continue Dev and Explain & Fix entries; offline error-classification guidance for novice users and account-limited HTTP 400 diagnostics.
           - Dev Ultra automatic task routing and 19 specialist references.
           - Token/log cost diagnostics, lazy Python 3 bootstrap, static IPA/DEB/Mach-O inspection, local Theos DEB build/verification, ABI-v2 preflight, resumable checkpoint journal.
           - Skill ZIP path/size hardening, App Group/FileProvider startup fallback protections, isolated R5 identity and chat visible-cell performance optimization.
