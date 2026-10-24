@@ -7,6 +7,7 @@ runtime success claim. Target and exact method signature require independent
 evidence; missing evidence blocks generation without writing source.
 """
 import argparse
+import contextlib
 import hashlib
 import io
 import json
@@ -68,7 +69,8 @@ def prepare(args):
             "class_evidence":names,"signature_evidence_sha256":sha256(evidence),
             "method":args.method.strip(),"process":args.process,
             "kind":"Objective-C pass-through","ABI_verified":False,"PAC_verified":False,
-            "device_verified":False,"status":"STATIC_PRECHECK_ONLY"}
+            "device_verified":False,"method_evidence_source":"user_supplied_requires_independent_runtime_confirmation",
+            "status":"STATIC_PRECHECK_ONLY"}
 
 def scaffold(args,proof):
     if not args.approve_scaffold:
@@ -77,7 +79,12 @@ def scaffold(args,proof):
     flags=SimpleNamespace(name=args.name,bundle_id=args.bundle_id,
                           process=args.process,class_name=args.class_name,
                           method=args.method,scheme=args.scheme,path=args.output,out=None)
-    devctl.cmd_hook(flags)
+    # HookLab emits its own standalone JSON. Capture it to return one coherent
+    # machine-readable result to Auto Engineer, not two concatenated objects.
+    captured=io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        devctl.cmd_hook(flags)
+    hook_result=json.loads(captured.getvalue())
     dest=pathlib.Path(args.output).expanduser()
     report=dest/"reverse-evidence.json"
     if report.exists() or report.is_symlink():
@@ -85,6 +92,7 @@ def scaffold(args,proof):
     report.write_text(json.dumps(proof,ensure_ascii=False,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     return {"status":"ISOLATED_PASS_THROUGH_SOURCE_CREATED","project":str(dest),
             "evidence_file":str(report),"source_exists":(dest/"Tweak.xm").is_file(),
+            "generator_status":hook_result.get("status"),
             "build_verified":False,"device_verified":False,
             "next_action":"Review source/prototypes, run targeted static/build tests; only consider install after independent ABI/runtime validation."}
 
