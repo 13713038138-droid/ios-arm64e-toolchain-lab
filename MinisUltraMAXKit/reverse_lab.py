@@ -121,6 +121,7 @@ def analyze_slice(data, start, length, search="", at=None, count=24):
               "load_command_count": ncmds, "dependencies": [], "sections": [],
               "swift_metadata": {}, "objc_metadata": {}, "warnings": []}
     text_segment = None
+    segments = []
     symtab = None
     function_data = None
     cryptids = []
@@ -141,6 +142,8 @@ def analyze_slice(data, start, length, search="", at=None, count=24):
                 raise ParseError("invalid section table")
             if filesize:
                 region(start+fileoff, filesize, start, end)
+            if filesize:
+                segments.append({"vmaddr":vmaddr,"fileoff":fileoff,"filesize":filesize})
             if seg == "__TEXT":
                 text_segment = {"vmaddr": vmaddr, "fileoff": fileoff,
                                 "filesize": filesize, "vmsize": vmsize}
@@ -182,6 +185,60 @@ def analyze_slice(data, start, length, search="", at=None, count=24):
         cursor += cmd_size
     if cursor != cmd_end:
         raise ParseError("load commands do not span declared sizeofcmds")
+    def vm_to_file(vmaddr, size=1):
+        for segment in segments:
+            relative = vmaddr - segment["vmaddr"]
+            if 0 <= relative and size <= segment["filesize"] - relative:
+                offset = start + segment["fileoff"] + relative
+                region(offset, size, start, end)
+                return offset
+        return None
+
+    # Swift ABI __swift5_types: each signed 32-bit relative direct pointer
+    # references a context descriptor; nominal type kinds class=16,
+    # struct=17, enum=18. This is actual metadata extraction, not a
+    # regex-only name search or source-code reconstruction.
+    nominal_types = []
+    swift = next((section for section in result["sections"]
+                  if section["name"] == "__swift5_types" and
+                  not section["virtual_only"]), None)
+    if swift:
+        section_addr = int(swift["vmaddr"],16)
+        section_offset = start + swift["file_offset"]
+        entries = min(swift["size"]//4, 80000)
+        for i in range(entries):
+            entry_off = section_offset + 4*i
+            delta = struct.unpack_from(order+"i",data,entry_off)[0]
+            # Swift relative indirectables: low bit 1 marks indirection.
+            if delta == 0 or delta & 1:
+                continue
+            descriptor_addr = section_addr + i*4 + delta
+            desc_off = vm_to_file(descriptor_addr, 12)
+            if desc_off is None:
+                continue
+            flags, parent_delta, name_delta = struct.unpack_from(order+"Iii",data,desc_off)
+            kind = flags & 0x1f
+            if kind not in (16,17,18):
+                continue
+            name_addr = descriptor_addr + 8 + name_delta
+            name_off = vm_to_file(name_addr)
+            if name_off is None:
+                continue
+            name_end = next((start+seg["fileoff"]+seg["filesize"] for seg in segments
+                             if seg["vmaddr"] <= name_addr <
+                             seg["vmaddr"]+seg["filesize"]), end)
+            name = stringz(data,name_off,name_end,240)
+            if not name or any(ord(c)<32 for c in name):
+                continue
+            if search and search.lower() not in name.lower():
+                continue
+            nominal_types.append({"name":name,"kind":{16:"class",17:"struct",18:"enum"}[kind],
+                                 "descriptor_address":f"0x{descriptor_addr:x}",
+                                 "context_flags":f"0x{flags:x}"})
+            if len(nominal_types)>=160:
+                result["warnings"].append("Swift nominal type output limited to 160 matches")
+                break
+    result["swift_nominal_types"] = nominal_types
     result["encrypted"] = any(cryptids)
     if result["encrypted"]:
         result["warnings"].append("Encrypted segment reported; symbols/metadata may be incomplete")
