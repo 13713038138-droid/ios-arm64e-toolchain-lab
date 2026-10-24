@@ -1,9 +1,10 @@
 name: Minis Dev Ultra MAX R5 public-source IPA build
-# Re-trigger on current main after GPT-6.1 catalog fixture correction; use the established public macOS runner path.
+# R5.3 isolated candidate build, reusing the verified macOS-15 pipeline; do not overwrite original Minis.
 on:
   push:
     branches:
       - main
+      - minis-r5-400-devcontinuation-20261024
     paths:
       - '.github/workflows/minis-max-r5-private-source-build.yml'
       - 'MinisUltraMAXKit/**'
@@ -13,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: minis-max-r5-public-source-build-20261023
+  group: minis-max-r5-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
