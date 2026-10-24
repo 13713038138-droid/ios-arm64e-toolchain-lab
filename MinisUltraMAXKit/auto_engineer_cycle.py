@@ -22,8 +22,11 @@ MAX_CHECKS = 4
 
 def safe_checkpoint(project, objective):
     # Do not log arbitrary project descriptions, file contents or credentials.
-    key = hashlib.sha256(str(project).encode()).hexdigest()[:20]
-    directory = autopilot.state_file(project).parent
+    # macOS /var is /private/var: normalize before hashing, matching
+    # valid_project() used by the real execution path on every host.
+    canonical = Path(project).resolve(strict=True)
+    key = hashlib.sha256(str(canonical).encode()).hexdigest()[:20]
+    directory = autopilot.state_file(canonical).parent
     return directory / (key + ".engineer.json")
 
 
