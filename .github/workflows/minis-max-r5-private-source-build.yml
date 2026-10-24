@@ -111,6 +111,8 @@ jobs:
           grep -q 'preparedFramesAreMonotone' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/MessageList/MessageListLayout.swift"
           grep -q 'decodedTotal' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
           grep -q 'installBundledUltraSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
+          python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/release_capabilities.py" --source-tree "$RUNNER_TEMP/OpenMinis" --level full > "$RUNNER_TEMP/r56-legacy-parity.json"
+          grep -q '"status": "PASS"' "$RUNNER_TEMP/r56-legacy-parity.json"
           grep -q 'case "devmax"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'case "devhook"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'case "devcontinue"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
