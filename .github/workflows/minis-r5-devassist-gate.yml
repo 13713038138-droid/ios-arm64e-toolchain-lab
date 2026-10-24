@@ -53,6 +53,9 @@ jobs:
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
           grep -q 'case "devcontinue"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'case "devfix"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'installBundledContinuationSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-continuation/SKILL.md"
+          grep -q "^name: minis-dev-continuation" "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-continuation/SKILL.md"
           grep -q 'detail.localizedCaseInsensitiveContains' "$RUNNER_TEMP/OpenMinis/src/ios/Providers/OpenAI/OpenAIProvider.swift"
           python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py" assist --error 'HTTP 400' | grep -q '"generic_400"'
           echo "PASS: exact pinned upstream source patched; not an IPA compile/device pass"
