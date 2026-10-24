@@ -43,6 +43,7 @@ jobs:
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_lab.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_intake.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_release_capabilities.py" -v
           python3 MinisUltraMAXKit/reverse_intake.py doctor | grep -q '"runtime_hooking": false'
           sh -n MinisUltraMAXKit/runtime/minis-reverse
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devassist.py" -v
@@ -69,6 +70,8 @@ jobs:
           test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse"
           MINIS_DEV_ULTRA_LIB="$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra" "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse" doctor | grep -q '"runtime_hooking": false'
           python3 MinisUltraMAXKit/patch_share_handoff.py "$RUNNER_TEMP/OpenMinis"
+          python3 MinisUltraMAXKit/release_capabilities.py --source-tree "$RUNNER_TEMP/OpenMinis" --level core > "$RUNNER_TEMP/minis-r56-parity-core.json"
+          grep -q '"status": "PASS"' "$RUNNER_TEMP/minis-r56-parity-core.json"
           grep -q "guard saved else" "$RUNNER_TEMP/OpenMinis/src/ios/ShareExtension/ShareViewController.swift"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-autopilot/SKILL.md"
           grep -q 'case "devauto"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
