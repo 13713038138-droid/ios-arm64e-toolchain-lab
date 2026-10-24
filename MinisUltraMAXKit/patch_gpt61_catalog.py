@@ -81,7 +81,7 @@ def patch_provider(s):
     // that includes the model. This value feeds discovery and request headers.
     static let codexClientVersion = "0.159.1"''',
         "Codex client-version gate")
-    return replace_once(
+    s = replace_once(
         s,
         '''    var usesChatCompletionsAPI: Bool {
         if forceResponsesAPI { return false }
