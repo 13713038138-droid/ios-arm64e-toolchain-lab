@@ -47,6 +47,12 @@ RULES={
     "engineering_checkpoint":(
        "src/ios/default_mount/usr/local/lib/minis-dev-ultra/auto_engineer_cycle.py",
        ("safe_checkpoint",)),
+    "provider_quota_safe_engineer_recovery":(
+       "src/ios/default_mount/usr/local/lib/minis-dev-ultra/engineer_recovery.py",
+       ("def classify_http_error(", "def local_resume(", "automatic_model_retry",)),
+    "recovery_cli":(
+       "src/ios/default_mount/usr/local/bin/minis-resume",
+       ("engineer_recovery.py",)),
     "existing_deb_factory":(
        "src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py",
        ("def ",)),
