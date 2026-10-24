@@ -384,7 +384,7 @@ def main(argv=None):
         try: import capstone; version = capstone.__version__
         except ImportError: version = None
         print(json.dumps({"python": sys.version.split()[0],
-             "capstone": version, "llvm_objdump": shutil.which("llvm-objdump"),
+             "capstone": version, "llvm_objdump": reverse_disasm.executable(),
              "built_in": ["Mach-O 64/fat parsing", "Swift/ObjC section and symbol scanning",
                           "function starts", "ARM64 branch targets"],
              "full_disassembly": bool(version or reverse_disasm.executable()), "runtime_hooking": False},indent=2))
