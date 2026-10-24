@@ -277,7 +277,7 @@ def verify(root):
         'reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]' in t,
         '.gpt61Sol' in t[all_openai_start:all_codex_start],
         '.gpt6Astra, .gpt6Sol, .gpt6Luna,' in t and
-            '.gpt61Sol' not in t[all_codex_start:t.find(']', all_codex_start)],
+            '.gpt61Sol' not in t[all_codex_start:t.index("\n    ]", all_codex_start)],
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
         'static let codexClientVersion = "0.159.1"' in p,
         'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
