@@ -7,4 +7,4 @@ if [ "$#" -lt 1 ]; then
   printf '%s\n' 'Usage: minis-reverse doctor | analyze <file.dylib> [--search term] | disasm <file.dylib> --at 0xADDRESS' >&2
   exit 2
 fi
-exec python3 "$LIB/reverse_lab.py" "$@"
+exec python3 "$LIB/reverse_intake.py" "$@"
