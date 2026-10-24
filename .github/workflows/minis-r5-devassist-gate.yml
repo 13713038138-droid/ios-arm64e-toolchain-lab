@@ -1,9 +1,9 @@
-name: Minis R5.3 nonexpert + model-400 isolated gates
+name: Minis R5.4 Auto Engineer + model compatibility gates
 
 on:
   push:
     branches:
-      - minis-r5-400-devcontinuation-20261024
+      - minis-r54-autopilot-20261024
     paths:
       - "MinisUltraMAXKit/**"
       - ".github/workflows/minis-r5-devassist-gate.yml"
@@ -35,6 +35,7 @@ jobs:
       - name: Portable R5 regressions
         run: |
           set -euo pipefail
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_autopilot.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devassist.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_gpt61_catalog.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devctl.py" -v
@@ -51,6 +52,11 @@ jobs:
           python3 MinisUltraMAXKit/apply_native_max.py "$RUNNER_TEMP/OpenMinis"
           python3 MinisUltraMAXKit/patch_gpt61_catalog.py "$RUNNER_TEMP/OpenMinis"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-autopilot/SKILL.md"
+          grep -q 'case "devauto"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'installBundledAutopilotSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
+          python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py" plan --project "$RUNNER_TEMP/OpenMinis" | grep -q '"requires_explicit_execute"'
           grep -q 'case "devcontinue"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'case "devfix"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           grep -q 'installBundledContinuationSkill()' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
