@@ -263,7 +263,7 @@ def patch_standalone_model_discovery_test(s):
     # The upstream standalone test checks that the client version STRING has
     # a "0.155." prefix. That breaks on every legitimate version increase,
     # including 0.159.1. Check the numeric floor instead, without reducing it.
-    old = '    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))'
+    old = r'    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))'
     new = '''    let marker = "codexClientVersion = \\""
     let segments = provider.components(separatedBy: marker)
     let v = segments.count > 1 ? String(segments[1].prefix(while: { $0 != "\\"" })) : ""
