@@ -97,6 +97,9 @@ jobs:
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_gpt61_catalog.py" "$RUNNER_TEMP/OpenMinis"
           grep -q 'if id == "gpt-6.1-sol", model.supportsReasoning == nil' "$RUNNER_TEMP/OpenMinis/src/ios/Providers/OpenAI/OpenAIModelsAPI.swift"
           MINIS_MAX_BUNDLE_ID="$MINIS_MAX_BUNDLE_ID" python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_ips_sigtrap.py" "$RUNNER_TEMP/OpenMinis"
+          python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/patch_share_handoff.py" "$RUNNER_TEMP/OpenMinis"
+          grep -q "guard saved else" "$RUNNER_TEMP/OpenMinis/src/ios/ShareExtension/ShareViewController.swift"
+          grep -q "return SharedContainerStore.savePendingShare(share)" "$RUNNER_TEMP/OpenMinis/src/ios/ShareExtension/ShareViewModel.swift"
           grep -q "minisIsolatedContainerBase" "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+RequestBudget.swift"
           grep -q "FileProvider registration skipped" "$RUNNER_TEMP/OpenMinis/src/ios/MinisApp.swift"
           grep -q "group.$MINIS_MAX_BUNDLE_ID" "$RUNNER_TEMP/OpenMinis/src/ios/Shared/SharedContainerStore.swift"
@@ -282,6 +285,17 @@ jobs:
             count=$((count+1))
           done
           test "$count" = 3
+          # Sharing only works when host + extension genuinely have the SAME
+          # cloned App Group entitlement. Embed and verify it; do not treat
+          # an ad-hoc signature alone as proof iOS grants runtime access.
+          SHARE_ENTITLEMENTS="$RUNNER_TEMP/ultra-output/isolated/MAXSharedGroup.entitlements"
+          python3 - "$SHARE_ENTITLEMENTS" "$MINIS_MAX_BUNDLE_ID" <<'PY'
+          import plistlib, sys
+          with open(sys.argv[1], "wb") as file:
+              plistlib.dump({"com.apple.security.application-groups":
+                  ["group." + sys.argv[2]]}, file)
+          PY
+          test -s "$SHARE_ENTITLEMENTS"
           # Ad-hoc signature is for TrollStore isolated testing only.
           while IFS= read -r -d '' lib; do
             codesign -f -s - --timestamp=none "$lib"
@@ -290,9 +304,14 @@ jobs:
             codesign -f -s - --timestamp=none "$fw"
           done < <(find "$TEST/Frameworks" -type d -name '*.framework' -print0)
           while IFS= read -r -d '' ext; do
-            codesign -f -s - --timestamp=none "$ext"
+            codesign -f -s - --entitlements "$SHARE_ENTITLEMENTS" --generate-entitlement-der --timestamp=none "$ext"
           done < <(find "$TEST/PlugIns" -maxdepth 1 -type d -name '*.appex' -print0)
-          codesign -f -s - --timestamp=none "$TEST"
+          codesign -f -s - --entitlements "$SHARE_ENTITLEMENTS" --generate-entitlement-der --timestamp=none "$TEST"
+          for signed in "$TEST" "$TEST"/PlugIns/*.appex; do
+            ENT_DUMP="$RUNNER_TEMP/ultra-output/isolated/$(basename "$signed").signed-entitlements.plist"
+            codesign -d --entitlements - "$signed" > "$ENT_DUMP" 2>/dev/null
+            /usr/libexec/PlistBuddy -c "Print :com.apple.security.application-groups:0" "$ENT_DUMP" | grep -Fx "group.$MINIS_MAX_BUNDLE_ID"
+          done
           codesign --verify --deep --strict --verbose=2 "$TEST"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$TEST/Info.plist" | grep -Fx "$MINIS_MAX_BUNDLE_ID"
           codesign -d -vv "$TEST" 2>&1 | tee "$RUNNER_TEMP/ultra-output/sign-test-evidence.txt"
