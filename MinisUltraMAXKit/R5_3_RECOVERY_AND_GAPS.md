@@ -3,8 +3,11 @@
 ## The observed case and correct limit
 On the last installable R5, GPT-6.1 Sol was not in the default model picker.
 An official Minis backup restored a model entry, after which it became visible,
-but a real request returned HTTP 400. Visibility is not authorization and HTTP
-400 alone does not identify the rejected field. Do not label a restored model
+but a real request returned HTTP 400. The device screenshot shows:
+  Provider error: [400] The 'gpt-6.1-sol' model is not supported when using Co...
+This agrees with the pinned OpenMinis Codex error format for a ChatGPT account
+model rejection. Visibility is not authorization; we now have concrete evidence
+of this account/session's route being denied, not only a bare 400 status. Do not label a restored model
 as working, and never invent an alias, spoof account entitlement or suppress
 the error.
 
@@ -15,8 +18,12 @@ A restored item can therefore be present even if the online account catalog
 does not expose it. Model-route/client-version, effort and account limitations
 are independent checks.
 
-R5.2 source patch adds the GPT-6.1 Sol catalog entry, the Codex client version
-0.159.1, Responses routing and effort metadata, with tests. R5.3 additionally
+R5.2 source patch originally inserted a GPT-6.1 Sol entry into the Codex
+OAuth static seed list. Real device evidence showed this is misleading, so R5.3
+removes that forced static seed but preserves the GPT-6.1 API-key catalog entry,
+Responses routing, effort metadata and enrichment ONLY if authenticated Codex
+model discovery itself returns the id. Client version 0.159.1 is not a
+substitute for server account authorization. R5.3 additionally
 recognizes the precise server-rejection phrase "not supported when using Codex"
 in response detail and reports an account-model denial rather than a generic
 400. This diagnostic patch does NOT unlock the model.
@@ -46,7 +53,11 @@ in response detail and reports an account-model denial rather than a generic
 - minis-dev-continuation: new independently versioned bundled skill that installs
   into existing user data without overwriting an edited minis-dev-ultra skill.
 - Model 400 clarity patch in OpenAIProvider.mapHTTPError, narrowly gated on
-  actual Codex model-denial text.
+  actual Codex model-denial text in either detail or error.message.
+- Removed forced GPT-6.1 Sol from Codex OAuth static fallbacks, retaining the
+  separate OpenAI API-key model definition and dynamic live-discovery behavior.
+  Restored entries remain preserved by existing backup/absence-grace policy;
+  they are not proof that this account can send successful requests.
 
 ## Priority improvement assessment
 
@@ -56,8 +67,10 @@ in response detail and reports an account-model denial rather than a generic
 - Reliable resume from previous stage: existing taskctl journal; no daemon or
   promise of autonomous execution when Minis is closed. Integration quality must
   be evaluated on real user projects.
-- Provider model 400 clarity: recognized denial, but needs the user's real
-  redacted error text to distinguish account vs payload.
+- Provider model 400 clarity: screenshot confirms a current Codex account-model
+  denial; no additional secret, account data or repeat request is necessary to
+  establish this particular cause. Live fix requires an actually authorized
+  provider/model, not a user-agent or model-picker patch.
 
 ### Priority 2 — not yet fully implemented
 - Automatic GitHub Actions failure collection and narrow patch attempts gated
