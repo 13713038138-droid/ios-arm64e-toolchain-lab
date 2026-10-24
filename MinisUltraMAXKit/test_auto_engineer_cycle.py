@@ -69,6 +69,14 @@ class EngineerCycleTests(unittest.TestCase):
         self.assertEqual(out["checks"][0]["outcome"], "failed")
         self.assertEqual((self.project / "module.py").read_text(), "VALUE = 1\n")
 
+    def test_repeated_identical_failure_blocks_extra_test_execution(self):
+        first = self.cycle()
+        self.assertEqual(first["status"], "needs_source_repair")
+        second = self.cycle()
+        self.assertEqual(second["status"], "blocked_repeat_failure")
+        self.assertEqual(second["checks"], [])
+        self.assertEqual((self.project / "module.py").read_text(), "VALUE = 1\\n")
+
     def test_source_edit_requires_approval(self):
         out = self.cycle(patch=str(self.patch), expected_head=self.head)
         self.assertEqual(out["status"], "approval_required_for_source_edit")
