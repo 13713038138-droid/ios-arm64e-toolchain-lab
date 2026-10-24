@@ -109,18 +109,24 @@ def source_fingerprint(project):
     extensions = {".py", ".swift", ".mm", ".m", ".h", ".hpp", ".c",
                   ".cc", ".cpp", ".xm", ".x", ".rs", ".go", ".java",
                   ".kt", ".js", ".ts", ".yml", ".yaml", ".toml"}
-    for file in sorted(project.rglob("*")):
-        relative = file.relative_to(project)
-        if any(part in excluded for part in relative.parts):
-            continue
-        if file.is_symlink() or not file.is_file() or (file.suffix not in extensions and file.name not in ("Makefile", "control")):
-            continue
-        stat = file.stat()
-        digest.update(str(relative).encode("utf-8", "replace"))
-        digest.update(f":{stat.st_size}:{stat.st_mtime_ns}".encode())
-        count += 1
-        if count >= 4000:
-            break
+    # Prune large .git/node_modules/build directories BEFORE enumerating their
+    # files; the old rglob/sort could consume large time/memory on big projects.
+    for directory, subdirs, filenames in os.walk(project, followlinks=False):
+        subdirs[:] = sorted(d for d in subdirs if d not in excluded and
+                            not Path(directory, d).is_symlink())
+        for filename in sorted(filenames):
+            file = Path(directory, filename)
+            if file.suffix not in extensions and filename not in ("Makefile", "control"):
+                continue
+            if file.is_symlink() or not file.is_file():
+                continue
+            relative = file.relative_to(project)
+            stat = file.stat()
+            digest.update(str(relative).encode("utf-8", "replace"))
+            digest.update(f":{stat.st_size}:{stat.st_mtime_ns}".encode())
+            count += 1
+            if count >= 4000:
+                return digest.hexdigest()
     return digest.hexdigest()
 
 def choose_steps(project):
