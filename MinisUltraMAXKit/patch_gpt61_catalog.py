@@ -77,9 +77,12 @@ def patch_provider(s):
     s = replace_once(
         s,
         '    static let codexClientVersion = "0.155.0"',
-        '''    // Newer client fingerprint for Codex protocol compatibility.
-    // This version does not confer access to any model the account cannot use.
-    static let codexClientVersion = "0.159.1"''',
+        '''    // Candidate Codex 0.163.0 compatibility profile: a public issue observed
+    // the identical gpt-6.1-sol HTTP 400 on an older client and a working
+    // request after updating the real Codex CLI to 0.163.0. This is a
+    // compatibility candidate, NOT evidence that Minis implements every
+    // transport behavior of that CLI or that any account is entitled.
+    static let codexClientVersion = "0.163.0"''',
         "Codex client-version gate")
     s = replace_once(
         s,
@@ -255,14 +258,14 @@ def patch_tests(s):
         '        for id in ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"] {', "nil-flag regression test")
     old = '''        XCTAssertTrue(atLeast(OpenAIProvider.codexClientVersion, "0.155.0"),
                       "gpt-6-sol / gpt-6-luna need >= 0.155.0, got \\(OpenAIProvider.codexClientVersion)")'''
-    new = old + '''\n        XCTAssertTrue(atLeast(OpenAIProvider.codexClientVersion, "0.159.1"),
-                      "gpt-6.1-sol needs the 0.159.1 Codex client baseline, got \\(OpenAIProvider.codexClientVersion)")'''
+    new = old + '''\n        XCTAssertTrue(atLeast(OpenAIProvider.codexClientVersion, "0.163.0"),
+                      "gpt-6.1-sol needs the 0.163.0 Codex client baseline, got \\(OpenAIProvider.codexClientVersion)")'''
     return replace_once(s, old, new, "client-version regression test")
 
 def patch_standalone_model_discovery_test(s):
     # The upstream standalone test checks that the client version STRING has
     # a "0.155." prefix. That breaks on every legitimate version increase,
-    # including 0.159.1. Check the numeric floor instead, without reducing it.
+    # including 0.163.0. Check the numeric floor instead, without reducing it.
     old = r'    check("client version is at least 0.155.x", provider.contains("codexClientVersion = \"0.155."))'
     new = '''    let marker = "codexClientVersion = \\""
     let segments = provider.components(separatedBy: marker)
@@ -292,12 +295,12 @@ def verify(root):
         '.gpt6Astra, .gpt6Sol, .gpt6Luna,' in t and
             '.gpt61Sol' not in t[all_codex_start:t.index("\n    ]", all_codex_start)],
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
-        'static let codexClientVersion = "0.159.1"' in p,
+        'static let codexClientVersion = "0.163.0"' in p,
         'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
         'detail.localizedCaseInsensitiveContains("not supported when using Codex")' in p,
         'if lid == "gpt-6.1-sol" { return "low" }' in agent,
         'XCTAssertFalse(ids.contains("gpt-6.1-sol")' in x and 'LLMModel.gpt61Sol' in x,
-        'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
+        'atLeast(OpenAIProvider.codexClientVersion, "0.163.0")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
         'appendKnownGPT61SolIfFamilyAvailable' not in api,
