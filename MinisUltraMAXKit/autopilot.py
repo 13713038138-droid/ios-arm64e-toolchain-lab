@@ -100,6 +100,29 @@ def git_summary(project):
     return {"repository": True, "revision": revision,
             "dirty": bool(status) if status is not None else None}
 
+def source_fingerprint(project):
+    """Cheap bounded source identity: no test timing or raw source in logs."""
+    digest = hashlib.sha256()
+    count = 0
+    excluded = {".git", "node_modules", ".build", ".swiftpm", "DerivedData",
+                "__pycache__", ".venv", "venv", "build", "dist"}
+    extensions = {".py", ".swift", ".mm", ".m", ".h", ".hpp", ".c",
+                  ".cc", ".cpp", ".xm", ".x", ".rs", ".go", ".java",
+                  ".kt", ".js", ".ts", ".yml", ".yaml", ".toml"}
+    for file in sorted(project.rglob("*")):
+        relative = file.relative_to(project)
+        if any(part in excluded for part in relative.parts):
+            continue
+        if file.is_symlink() or not file.is_file() or (file.suffix not in extensions and file.name not in ("Makefile", "control")):
+            continue
+        stat = file.stat()
+        digest.update(str(relative).encode("utf-8", "replace"))
+        digest.update(f":{stat.st_size}:{stat.st_mtime_ns}".encode())
+        count += 1
+        if count >= 4000:
+            break
+    return digest.hexdigest()
+
 def choose_steps(project):
     # Discovery reads only filenames, not private code, commands or credentials.
     # Explicit fixed argv, no shell, no automatically executing project scripts.
@@ -172,7 +195,7 @@ def report(args):
                 break
             completed = execute(project, label, argv, args.timeout)
             result["executed"].append(completed)
-            signature = hashlib.sha256((label + completed["outcome"] + completed.get("excerpt", "")).encode()).hexdigest()
+            signature = hashlib.sha256((label + completed["outcome"] + source_fingerprint(project)).encode()).hexdigest()
             attempt = state["attempts"].get(signature, 0) + 1
             state["attempts"][signature] = attempt
             if completed["outcome"] != "pass":
