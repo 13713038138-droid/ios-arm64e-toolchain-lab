@@ -60,7 +60,7 @@ class ReverseLabTests(unittest.TestCase):
 
     def test_builtin_arm64_branch_target(self):
         result=rev.analyze(self.path,at=VM+0x400,count=2)["slices"][0]
-        self.assertTrue(result["disassembler"] in ("capstone","builtin-branch-only"))
+        self.assertTrue(result["disassembler"] in ("capstone","llvm-objdump","builtin-branch-only"))
         self.assertTrue(any(x["mnemonic"]=="bl" for x in result["instructions"]))
         if result["disassembler"] == "builtin-branch-only":
             self.assertEqual(result["instructions"][0]["target"],"0x1408")
