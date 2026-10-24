@@ -60,6 +60,8 @@ jobs:
           git -C "$RUNNER_TEMP/OpenMinis" fetch --depth 1 origin b4c0661d5631ebab4d1a2e6f3fd4c805d4030a6c
           git -C "$RUNNER_TEMP/OpenMinis" checkout --detach FETCH_HEAD
           python3 MinisUltraMAXKit/apply_native_max.py "$RUNNER_TEMP/OpenMinis"
+          MINIS_MAX_BUNDLE_ID=com.openminis.devultramax.r55 python3 MinisUltraMAXKit/patch_ips_sigtrap.py "$RUNNER_TEMP/OpenMinis"
+          MINIS_MAX_BUNDLE_ID=com.openminis.devultramax.r55 python3 MinisUltraMAXKit/test_ips_sigtrap.py "$RUNNER_TEMP/OpenMinis"
           python3 MinisUltraMAXKit/patch_gpt61_catalog.py "$RUNNER_TEMP/OpenMinis"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
