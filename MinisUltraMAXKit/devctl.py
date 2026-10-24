@@ -840,12 +840,13 @@ def classify_development_error(message):
     raw = str(message or "")[-65536:]
     normalized = raw.lower()
     codes = {
-        "codex_unavailable": (
-            "模型不被当前 Codex/ChatGPT 账号允许",
-            "停止重试同一模型；从当前账号在线返回的可用列表中选择模型。备份模型记录不能赋予使用权限。",
-            ["保存经过脱敏的 HTTP 400 响应正文", "刷新当前登录账号的 Codex 模型列表",
-             "用确实出现在服务端目录中的模型做一次最小聊天测试",
-             "仅在服务端已允许模型时继续检查请求参数"]),
+        "codex_route_denied": (
+            "当前 Codex 客户端调用路径遭到模型拒绝（账号本身是否有权限尚未证明）",
+            "比较原版与 MAX 的真实模型 ID、账号身份、Version、端点和请求参数；备份中的模型记录不能证明请求兼容。",
+            ["核实原版已能成功回复：确定模型 ID 和供应商凭据类型（不读取令牌）",
+             "比对 MAX 的 Codex 客户端版本、模型目录、账号 ID 哈希、端点与非敏感字段",
+             "在独立候选中验证与真实新版 Codex 兼容的请求，再进行真机验收",
+             "无法确定时保留可回退旧版，勿将 400 当作账号全局无权限"]),
         "bad_reasoning": (
             "推理参数与模型不兼容",
             "核对服务端接受的 reasoning.effort 档位，构造单轮最小请求并回归原设置。",
@@ -881,7 +882,7 @@ def classify_development_error(message):
     if ("not supported when using codex" in normalized or
         "not supported with a chatgpt account" in normalized or
         "model is not supported when using codex" in normalized):
-        kind = "codex_unavailable"
+        kind = "codex_route_denied"
     elif ("reasoning_effort" in normalized or "reasoning.effort" in normalized or
           "invalid effort" in normalized) and ("400" in normalized or "invalid" in normalized or "unsupported" in normalized):
         kind = "bad_reasoning"
@@ -909,7 +910,7 @@ def classify_development_error(message):
         "category": kind, "confirmed": kind != "generic_400",
         "can_fix_without_more_evidence": kind in ("bad_reasoning", "bad_schema", "missing_sdk", "build_failed"),
         "meaning": title, "next_action": action, "safe_steps": steps,
-        "needs_external_approval": kind == "codex_unavailable",
+        "needs_external_approval": False,
         "note": "分类依据输入文本；不是服务器授权证明，也没有执行修复或生成安装包。",
     }
 
@@ -927,7 +928,7 @@ def cmd_assist(args):
     result["source"] = "user_error" if args.error else ("log" if args.log else "none")
     result["stage"] = args.stage
     result["safe_to_retry_unchanged"] = result["category"] not in (
-        "codex_unavailable", "generic_400", "unknown_model", "bad_schema", "bad_reasoning")
+        "codex_route_denied", "generic_400", "unknown_model", "bad_schema", "bad_reasoning")
     emit(result, args.out)
 
 
