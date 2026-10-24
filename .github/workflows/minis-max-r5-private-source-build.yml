@@ -214,11 +214,11 @@ jobs:
               strings -a "$candidate" >> "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt"
             fi
           done < <(find "$APP" -type f -print0)
-          grep -Fq '0.159.1' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" || { echo "NO-GO: shipped app Mach-O files are missing Codex client version 0.159.1"; exit 1; }
+          grep -Fq '0.163.0' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" || { echo "NO-GO: shipped app Mach-O files are missing Codex client version 0.163.0"; exit 1; }
           {
             echo 'GPT-6.1-Sol Release binary client-version marker: PASS'
             echo "Main executable: $(basename "$BIN")"
-            grep -F '0.159.1' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
+            grep -F '0.163.0' "$RUNNER_TEMP/ultra-output/Minis-executable-strings.txt" | sort -u
             shasum -a 256 "$BIN"
             echo 'Model catalog requires standalone Swift checks because upstream iSH archives are device-only; simulator XCTest is unavailable.'
           } > "$RUNNER_TEMP/ultra-output/GPT61_MODEL_GATE.txt"
@@ -317,7 +317,7 @@ jobs:
             echo "Pinned OpenMinis source commit: $SOURCE_COMMIT"
             echo "R5 isolated bundle ID: $MINIS_MAX_BUNDLE_ID"
             echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
-            echo 'GPT-6.1-Sol: API-key model definition, live Codex discovery only, reasoning fallback and Version 0.159.1; standalone Swift checks and binary-marker checks. Simulator XCTest not executed due to device-only iSH libs. User's Codex route returned HTTP 400 unsupported.'
+            echo 'GPT-6.1-Sol: API-key model definition, live Codex discovery only, reasoning fallback and Version 0.163.0; standalone Swift checks and binary-marker checks. Simulator XCTest not executed due to device-only iSH libs. User's Codex route returned HTTP 400 unsupported.'
             echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
             echo 'Developer tools: 19 specialist references, automatic routing, upgrade-safe continuation skill, nonexpert Continue/Fix workflow, HTTP 400 triage, token/log optimizer, Python bootstrap, static binary inspection, local DEB factory, ABI-v2 preflight, checkpoint journal, skill ZIP hardening and chat layout optimization.'
             echo 'Not claimed: full native IDE, persistent background daemon, full Apple SDK download manager, C-function hook ABI inference or live ChatGPT entitlement validation.'
@@ -352,7 +352,7 @@ jobs:
           Minis Dev Ultra MAX R5.3 — isolated TrollStore test candidate
           
           Included:
-          - GPT-6.1-Sol API-key definition and account-specific live Codex discovery (not forced into OAuth seed), reasoning metadata, Responses routing, Version 0.159.1, standalone Swift/source regressions and binary marker checks.
+          - GPT-6.1-Sol API-key definition and account-specific live Codex discovery (not forced into OAuth seed), reasoning metadata, Responses routing, Version 0.163.0, standalone Swift/source regressions and binary marker checks.
           - HookLab slash command and evidence-first pass-through Logos scaffolding for verified Objective-C class methods.
           - Continue Dev and Explain & Fix entries, upgrade-safe continuation skill; offline error-classification guidance for novice users and account-limited HTTP 400 diagnostics.
           - Dev Ultra automatic task routing and 19 specialist references.
