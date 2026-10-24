@@ -233,7 +233,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             -derivedDataPath "$RUNNER_TEMP/MinisTestDerivedData" \
             -only-testing:MinisTests/GPT6SolLunaOpus55Tests \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/gpt61-tests.log"
+            IPHONEOS_DEPLOYMENT_TARGET=16.0 CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/gpt61-tests.log"
           cat >> "$RUNNER_TEMP/ultra-output/GPT61_MODEL_GATE.txt" <<'EOF'
           GPT-6.1-Sol Release iOS Simulator XCTest: PASS
           Verified by executable tests: catalog inclusion, pinned reasoning metadata/effort ladder, official Responses routing, and preservation of custom endpoint routing.
