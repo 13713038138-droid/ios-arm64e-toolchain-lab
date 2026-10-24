@@ -34,6 +34,12 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
         raise ValueError("NO-GO: development objective is required")
     state_path = safe_checkpoint(project, objective)
     summary = autopilot.git_summary(project)
+    previous = None
+    if state_path.exists():
+        try:
+            previous = json.loads(state_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            previous = None
     result = {
         "status": "needs_execution",
         "project": str(project),
@@ -68,6 +74,18 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
         }
     steps = autopilot.choose_steps(project)
     selected = steps[:MAX_CHECKS]
+    # Do not burn additional test/token budget on identical failures when the
+    # source, environment and test entry point have not changed.
+    failure_key = None
+    if previous and previous.get("status") in ("needs_source_repair", "blocked_repeat_failure") and patch is None:
+        prior_key = previous.get("failure_key")
+        if prior_key and previous.get("before_revision") == summary["revision"] and not summary["dirty"]:
+            result["status"] = "blocked_repeat_failure"
+            result["failure_key"] = prior_key
+            result["next_agent_action"] = "Do not rerun unchanged failing tests. Investigate actual error and author a minimal source patch."
+            autopilot.save_state(state_path, result)
+            result["checkpoint_file"] = str(state_path)
+            return result
     if not selected:
         result["status"] = "blocked_no_supported_runner"
         result["next_agent_action"] = (
@@ -85,6 +103,7 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
             result["checks"].append(completed)
             if completed["outcome"] != "pass":
                 result["status"] = "needs_source_repair"
+                result["failure_key"] = hashlib.sha256((name + completed["outcome"] + completed.get("excerpt", "")).encode()).hexdigest()
                 result["next_agent_action"] = (
                     "Read the first causal error in the actual test output, "
                     "author one minimal source diff and run this cycle again. "
