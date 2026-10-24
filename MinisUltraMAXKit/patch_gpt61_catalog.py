@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""R5 patch: expose GPT-6.1-Sol in the iOS Codex OAuth catalog safely."""
+"""R5 patch: support GPT-6.1 Sol while respecting Codex account capabilities."""
 from pathlib import Path
 import sys
 
@@ -27,8 +27,9 @@ def patch_types(s):
         supportsReasoning: true
     )
 '''
-    entry = '''    /// GPT-6.1 Sol is available through Codex OAuth on eligible ChatGPT accounts.
-    /// Keep static metadata authoritative when the live catalog omits these fields.
+    entry = '''    /// GPT-6.1 Sol is supported as an OpenAI API model.
+    /// Do not add it to the Codex OAuth static fallback catalog: account
+    /// availability must come from the live authenticated backend response.
     static let gpt61Sol = LLMModel(
         id: "gpt-6.1-sol",
         displayName: "GPT-6.1-Sol",
@@ -58,9 +59,9 @@ def patch_types(s):
     ]''',
         "OpenAI API-key fallback model list",
     )
-    return replace_once(s, "        .gpt6Astra, .gpt6Sol, .gpt6Luna,",
-                        "        .gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,",
-                        "Codex OAuth model list")
+    # Do not advertise GPT-6.1 Sol to Codex OAuth before backend discovery.
+    # The API-key fallback remains independent of the ChatGPT account session.
+    return s
 
 def patch_thinking(s):
     return replace_once(
@@ -76,9 +77,8 @@ def patch_provider(s):
     s = replace_once(
         s,
         '    static let codexClientVersion = "0.155.0"',
-        '''    // GPT-6.1 Sol is withheld from the Codex model catalog for client versions
-    // below 0.159.0 despite its registry minimum; 0.159.1 is the release baseline
-    // that includes the model. This value feeds discovery and request headers.
+        '''    // Newer client fingerprint for Codex protocol compatibility.
+    // This version does not confer access to any model the account cannot use.
     static let codexClientVersion = "0.159.1"''',
         "Codex client-version gate")
     s = replace_once(
@@ -108,10 +108,11 @@ def patch_provider(s):
         if statusCode == 400,
            let data = body.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let detail = json["detail"] as? String,
+           let detail = (json["detail"] as? String)
+               ?? ((json["error"] as? [String: Any])?["message"] as? String),
            detail.localizedCaseInsensitiveContains("not supported when using Codex") {
             return .providerError(
-                message: "HTTP 400: this model is not enabled for the current ChatGPT/Codex account. A restored backup does not grant access. Refresh the online model list. Server: \(String(detail.prefix(240)))")
+                message: "HTTP 400: this model is not enabled for the current ChatGPT/Codex account. A restored backup does not grant access. Choose a model permitted by this account, or configure a separately authorized API-key provider. Server: \(String(detail.prefix(240)))")
         }
         // Try to extract error message from JSON body
 ''',
@@ -244,7 +245,7 @@ def patch_tests(s):
         '        XCTAssertEqual(LLMModel.gpt61Sol.id, "gpt-6.1-sol")', "reasoning entry test")
     s = replace_once(s, '        XCTAssertTrue(ids.contains("gpt-6-luna"))',
         '        XCTAssertTrue(ids.contains("gpt-6-luna"))\n'
-        '        XCTAssertTrue(ids.contains("gpt-6.1-sol"))', "OAuth picker test")
+        '        XCTAssertFalse(ids.contains("gpt-6.1-sol"), "Codex fallback must not imply entitlement")', "OAuth picker test")
     s = replace_once(s, '        XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)',
         '        XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)\n'
         '        XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6.1-sol"), .max)', "thinking ceiling test")
@@ -275,13 +276,14 @@ def verify(root):
         'contextWindow: 1_050_000' in t and 'maxOutputTokens: 128_000' in t,
         'reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]' in t,
         '.gpt61Sol' in t[all_openai_start:all_codex_start],
-        '.gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,' in t,
+        '.gpt6Astra, .gpt6Sol, .gpt6Luna,' in t and
+            '.gpt61Sol' not in t[all_codex_start:t.find(']', all_codex_start)],
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
         'static let codexClientVersion = "0.159.1"' in p,
         'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
         'detail.localizedCaseInsensitiveContains("not supported when using Codex")' in p,
         'if lid == "gpt-6.1-sol" { return "low" }' in agent,
-        'XCTAssertTrue(ids.contains("gpt-6.1-sol"))' in x and 'LLMModel.gpt61Sol' in x,
+        'XCTAssertFalse(ids.contains("gpt-6.1-sol")' in x and 'LLMModel.gpt61Sol' in x,
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
