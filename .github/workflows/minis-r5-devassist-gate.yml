@@ -5,6 +5,7 @@ on:
     branches:
       - minis-r54-autopilot-20261024
       - minis-r55-share-engine-20261024
+      - minis-r56-reverselab-safe-20261024
     paths:
       - "MinisUltraMAXKit/**"
       - ".github/workflows/minis-r5-devassist-gate.yml"
@@ -40,6 +41,8 @@ jobs:
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_source_patch.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_auto_engineer_cycle.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_share_handoff.py" -v
+          python3 -m unittest discover -s MinisUltraMAXKit -p "test_reverse_lab.py" -v
+          sh -n MinisUltraMAXKit/runtime/minis-reverse
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devassist.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_gpt61_catalog.py" -v
           python3 -m unittest discover -s MinisUltraMAXKit -p "test_devctl.py" -v
@@ -59,6 +62,9 @@ jobs:
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/source_patch.py"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/auto_engineer_cycle.py"
+          test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/reverse_lab.py"
+          test -x "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse"
+          MINIS_DEV_ULTRA_LIB="$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra" "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/bin/minis-reverse" doctor | grep -q '"runtime_hooking": false'
           python3 MinisUltraMAXKit/patch_share_handoff.py "$RUNNER_TEMP/OpenMinis"
           grep -q "guard saved else" "$RUNNER_TEMP/OpenMinis/src/ios/ShareExtension/ShareViewController.swift"
           test -f "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/var/minis/skills/minis-dev-autopilot/SKILL.md"
