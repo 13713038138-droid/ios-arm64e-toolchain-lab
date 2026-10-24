@@ -115,7 +115,7 @@ def patch_provider(s):
                ?? ((json["error"] as? [String: Any])?["message"] as? String),
            detail.localizedCaseInsensitiveContains("not supported when using Codex") {
             return .providerError(
-                message: "HTTP 400: this model is not enabled for the current ChatGPT/Codex account. A restored backup does not grant access. Choose a model permitted by this account, or configure a separately authorized API-key provider. Server: \(String(detail.prefix(240)))")
+                message: "HTTP 400: this Codex request path rejected the selected model. The original Minis may use a working client version or auth context; this alone does NOT prove account-wide ineligibility. Compare model discovery and request metadata, without copying credentials. Server: \(String(detail.prefix(240)))")
         }
         // Try to extract error message from JSON body
 ''',
