@@ -75,19 +75,19 @@ def inspect(project, objective):
     if data and data.get("objective_sha256")!=objective_hash:
         data=None
     source=autopilot.source_fingerprint(project)
-    saved=data.get("source_signature") if data else None
+    saved=existing.get("source_fingerprint") if existing else None
     return {"project":str(project),"provider":existing.get("category") if existing else "unknown",
             "status":"checkpoint_found" if existing or data else "no_checkpoint",
             "engineer_stage":data.get("status") if data else None,
             "last_inflight_step":data.get("current_step") if data else None,
             "last_completed_checks":[{"step":x["step"],"outcome":x["outcome"]} for x in data.get("checks",[])] if data else [],
             "source_fingerprint":source,
-            "source_modified_since_engineer_checkpoint": bool(data and saved and not saved.startswith("fp:")),
+            "source_modified_since_provider_checkpoint": bool(saved and source!=saved),
             "can_auto_retry_model":False,
             "can_resume_without_model":bool(data and data.get("status") in ("running_checks","source_applied_tests_pending","needs_source_repair")),
             "next_action":"Read the verified engineer checkpoint; resume only after source and test review. No background work or model quota bypass."}
 
-def record(project, category, objective, status, error):
+def record(project, objective, status, error):
     project=autopilot.valid_project(project)
     report=classify_http_error(error,status)
     data={"schema":1,"project":str(project),"objective_sha256":hashlib.sha256(objective.encode()).hexdigest(),
@@ -137,7 +137,7 @@ def main(argv=None):
             if not path.is_file() or path.is_symlink() or path.stat().st_size>MAX_ERROR_CHARS:
                 raise ValueError("NO-GO: error-file must be an ordinary small local file")
             error=path.read_text(encoding="utf-8",errors="replace")
-            result=record(a.project,None,a.objective,a.http_status,error)
+            result=record(a.project,a.objective,a.http_status,error)
         else:
             result=local_resume(a.project,a.objective,a.expected_source,a.execute_tests,a.reviewed_source)
         print(json.dumps(result,ensure_ascii=False,indent=2))
