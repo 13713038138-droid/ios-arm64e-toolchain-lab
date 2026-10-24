@@ -28,6 +28,7 @@ PROVIDER = '''    static let codexClientVersion = "0.155.0"
         if forceResponsesAPI { return false }
         if !isOAuth { return true }
     }
+        // Try to extract error message from JSON body
 '''
 AGENT = '''        guard !level.isEnabled else { return nil }
         if provider.customBaseURL == nil && !provider.isAzure { return "none" }
@@ -90,6 +91,7 @@ class Tests(unittest.TestCase):
         self.assertIn(".gpt61Sol", types[types.index("static let allOpenAI: [LLMModel] ="):types.index("static let allOpenAICodexOAuth: [LLMModel] =")])
         provider = (root / "src/ios/Providers/OpenAI/OpenAIProvider.swift").read_text()
         self.assertIn('static let codexClientVersion = "0.159.1"', provider)
+        self.assertIn('detail.localizedCaseInsensitiveContains("not supported when using Codex")', provider)
         self.assertIn('model.id.lowercased() == "gpt-6.1-sol"', provider)
         self.assertIn("customBaseURL == nil, !isAzure", provider)
         agent = (root / "src/ios/Providers/OpenAI/OpenAIAgentProvider.swift").read_text()
