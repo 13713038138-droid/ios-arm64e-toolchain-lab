@@ -12,6 +12,7 @@ if len(sys.argv) != 2:
     raise SystemExit("usage: python3 patch_share_handoff.py /path/to/pinned/OpenMinis")
 root = Path(sys.argv[1]).resolve()
 src = root / "src/ios"
+pending = {}
 
 def replace_one(relative, old, new):
     file = src / relative
@@ -20,7 +21,7 @@ def replace_one(relative, old, new):
     value = file.read_text(encoding="utf-8")
     if value.count(old) != 1:
         raise RuntimeError(f"NO-GO: source drift at {relative} (matches {value.count(old)})")
-    file.write_text(value.replace(old, new, 1), encoding="utf-8")
+    pending[file] = value.replace(old, new, 1)
 
 replace_one("Shared/SharedContainerStore.swift",
 """    static func savePendingShare(_ share: PendingShare) {
@@ -99,6 +100,10 @@ replace_one("Shared/ExternalFileImporter.swift",
             return false
         }
         importLog.info""")
+
+# Only commit modifications after EVERY expected upstream signature matched.
+for file, content in pending.items():
+    file.write_text(content, encoding="utf-8")
 
 print("PASS: host and Share Extension now verify persisted share results")
 print("NOT VERIFIED: iOS App Group entitlement, cross-process handoff and device acceptance")
