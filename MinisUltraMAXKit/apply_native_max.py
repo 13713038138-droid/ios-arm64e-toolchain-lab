@@ -82,8 +82,8 @@ The user is not required to know the next engineering step. On "continue", "继�
 6. Preserve user data, original Minis, source privacy, stable baseline and rollback. Destructive actions, package install, credential changes, and publishing private code require explicit authorization. Never conceal errors or claim that tests passed when not run.
 
 ## Model 400 decision gate
-A model imported from provider_config.json may appear even if the current account cannot use it. HTTP 400 alone is not a diagnosis: inspect sanitized response detail/error.message.
-- "not supported when using Codex with a ChatGPT account" means server/account model unavailable. Stop repeated calls, refresh the authoritative account model catalog, offer an actually supported model. Do NOT spoof Version, invent an alias, or label a static picker entry as entitled.
+A model imported from provider_config.json may appear without validating this client route. HTTP 400 alone is not a diagnosis: inspect sanitized response detail/error.message.
+- "not supported when using Codex with a ChatGPT account" means this Codex request path was rejected. If the original Minis with ChatGPT login can actually reply, compare the clients' model ID, endpoint, Version, provider/credential type, account ID hash and non-secret request field names before inferring account entitlement. Do NOT forge an alias, conceal rejection, or treat a header change alone as proof of compatibility.
 - Invalid reasoning_effort/field/endpoint: minimize the request, correct only that setting for the verified endpoint, rerun model and tool-call tests. OFF can itself be unsupported for some reasoning models.
 - Keep API-key, custom base URL and Codex OAuth separate. Never silently change a saved provider or choose a paid endpoint.
 - Without response detail, collect a redacted error or read diagnostic logs; no guessed fix.
@@ -135,7 +135,7 @@ description: Continue, resume and debug an existing programming or iOS tweak pro
 When a request says "continue", "继续" or gives an error, resume the ACTIVE project using the present chat, real source tree, logs and task journal. Do not start a different project, reset verified baselines, or require the user to choose a compiler/ABI strategy.
 
 1. Identify latest verified source revision, real build result and pending step. First inspect files and python3 /usr/local/lib/minis-dev-ultra/taskctl.py list; if a task exists, read or resume it; otherwise create a project-specific task before changes, then checkpoint every tested milestone. A journal is not an asynchronous agent.
-2. Classify the actual error using minis-dev-ultra assist --error "REDACTED_DETAILS" or --log PATH. HTTP 400 alone does not distinguish account restrictions from request parameters. Backup-imported GPT-6.1 entries may display without account authorization.
+2. Classify the actual error using minis-dev-ultra assist --error "REDACTED_DETAILS" or --log PATH. HTTP 400 alone does not distinguish account restrictions from request parameters. Backup-imported GPT-6.1 entries may display even when this client route fails; a working original app is counterevidence to account-wide ineligibility.
 3. Pick the smallest reversible fix and ACT with available tools. Verify project/toolchain/permission, run focused tests and negative controls, then update the checkpoint. Do not repeat a failed attempt unchanged more than twice.
 4. If blocked by a missing required source, device log, secret, entitlement or permission, do not speculate or fabricate results. Tell the user the one concrete item you need and why, in plain Chinese. Never ask the user to design technical next steps.
 5. End each work phase with: what changed, what actually passed, what did not pass, next action, rollback. A package is only installable if build, signing, hashes and appropriate device tests are verified.
