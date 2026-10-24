@@ -1,0 +1,42 @@
+name: R5.6 macOS native ARM64 reverse verification
+on:
+  push:
+    branches:
+      - minis-r56-reverselab-safe-20261024
+    paths:
+      - 'MinisUltraMAXKit/reverse_disasm.py'
+      - 'MinisUltraMAXKit/reverse_lab.py'
+      - 'MinisUltraMAXKit/test_reverse_disasm.py'
+      - '.github/workflows/minis-r56-native-reverse-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  llvm-arm64-macho:
+    runs-on: macos-15
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm exact native LLVM Apple toolchain exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcrun --find clang
+          xcrun --find llvm-objdump
+      - name: Compile real ARM64 Mach-O and verify full instruction decoding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile MinisUltraMAXKit/reverse_disasm.py MinisUltraMAXKit/reverse_lab.py
+          cd MinisUltraMAXKit
+          python3 -m unittest test_reverse_disasm.NativeDisasmTests.test_genuine_clang_arm64_macho_disassembly -v
+          python3 - <<'PY'
+          import reverse_disasm
+          path=reverse_disasm.executable()
+          assert path, "NO-GO: LLVM native backend unavailable"
+          print("PASS: real Xcode LLVM ARM64 decoder:",path)
+          PY
+          echo "PASS: actual ARM64 Mach-O instructions decoded by LLVM on Apple runner"
