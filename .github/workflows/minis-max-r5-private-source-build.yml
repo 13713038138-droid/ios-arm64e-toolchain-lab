@@ -315,7 +315,7 @@ jobs:
           codesign -f -s - --entitlements "$SHARE_ENTITLEMENTS" --generate-entitlement-der --timestamp=none "$TEST"
           for signed in "$TEST" "$TEST"/PlugIns/*.appex; do
             ENT_DUMP="$RUNNER_TEMP/ultra-output/isolated/$(basename "$signed").signed-entitlements.plist"
-            codesign -d --entitlements - "$signed" > "$ENT_DUMP" 2>/dev/null
+            codesign -d --entitlements - --xml "$signed" > "$ENT_DUMP" 2>/dev/null
             /usr/libexec/PlistBuddy -c "Print :com.apple.security.application-groups:0" "$ENT_DUMP" | grep -Fx "group.$MINIS_MAX_BUNDLE_ID"
           done
           codesign --verify --deep --strict --verbose=2 "$TEST"
