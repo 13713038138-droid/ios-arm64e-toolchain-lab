@@ -134,24 +134,6 @@ def patch_models_api(s):
             return model
 '''
     s = replace_once(s, anchor, replacement, "Codex dynamic reasoning fallback")
-    call_anchor = "                let models = appendBuiltInImageModels(to: discovered)"
-    call_replacement = "                let withGPT61 = appendKnownGPT61SolIfFamilyAvailable(to: discovered)\n                let models = appendBuiltInImageModels(to: withGPT61)"
-    s = replace_once(s, call_anchor, call_replacement, "dynamic catalog GPT-6.1-Sol inclusion")
-    helper_anchor = "    /// [T-codex-image-models-survive-discovery] Add the built-in Codex image"
-    helper = '''    /// Keep the known GPT-6.1-Sol entry available when this account's authoritative
-    /// Codex catalog exposes another GPT-6 family model but omits the new sibling.
-    /// Do not inject it into unrelated providers or accounts with no GPT-6 access.
-    static func appendKnownGPT61SolIfFamilyAvailable(to discovered: [LLMModel]) -> [LLMModel] {
-        let ids = Set(discovered.map(\\.id))
-        guard !ids.contains(LLMModel.gpt61Sol.id) else { return discovered }
-        guard ids.contains("gpt-6-astra") || ids.contains("gpt-6-sol") || ids.contains("gpt-6-luna") else {
-            return discovered
-        }
-        return discovered + [LLMModel.gpt61Sol]
-    }
-
-'''
-    s = replace_once(s, helper_anchor, helper + helper_anchor, "GPT-6.1-Sol dynamic catalog helper")
     merge_anchor = '''        let byId = Dictionary(enriched.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         return fresh.map { authoritative in
             guard var merged = byId[authoritative.id] else { return authoritative }
@@ -234,18 +216,6 @@ def patch_tests(s):
         XCTAssertTrue(provider.usesChatCompletionsAPI)
     }
 
-    func testGPT61SolIsAppendedWhenCodexCatalogHasGPT6Family() {
-        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])
-        XCTAssertEqual(result.filter { $0.id == "gpt-6.1-sol" }.count, 1)
-        XCTAssertEqual(result.last?.displayName, "GPT-6.1-Sol")
-        XCTAssertEqual(result.last?.supportsReasoning, true)
-    }
-
-    func testGPT61SolIsNotAppendedToUnrelatedCodexCatalog() {
-        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt55])
-        XCTAssertFalse(result.contains { $0.id == "gpt-6.1-sol" })
-    }
-
 '''
     s = replace_once(s, "    func testBothAreOfferedOverCodexOAuth() {",
                     dynamic_test + "    func testBothAreOfferedOverCodexOAuth() {",
@@ -296,13 +266,12 @@ def verify(root):
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
         'if id == "gpt-6.1-sol", model.supportsReasoning == nil' in api,
         'model.supportsReasoning = true' in api,
-        'appendKnownGPT61SolIfFamilyAvailable(to: discovered)' in api,
-        'return discovered + [LLMModel.gpt61Sol]' in api,
+        'appendKnownGPT61SolIfFamilyAvailable' not in api,
+        'let models = appendBuiltInImageModels(to: discovered)' in api,
         'let builtInById = Dictionary(LLMModel.allOpenAICodexOAuth.map' in api,
         'if authoritative.id == "gpt-6.1-sol"' in api,
         'if authoritative.reasoningEffortValues != nil' in api,
         'OpenAIModelsAPI.parseCodexModels(data)' in x and 'reasoningEffort(for: model, level: .medium), "medium"' in x,
-        'appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])' in x,
         'testGPT61SolUsesResponsesAPIForOfficialOpenAIEndpoint' in x,
         'testGPT61SolPreservesCustomEndpointRouting' in x,
     ]
@@ -324,7 +293,7 @@ def main(argv=None):
         print("usage: python3 patch_gpt61_catalog.py /path/to/OpenMinis", file=sys.stderr)
         return 2
     apply(Path(argv[0]).resolve())
-    print("PASS GPT61: retained model ID, Responses routing, OFF-to-low clamp, 1.05M/128K metadata, effort ladder, live catalog fallback and regression assertions")
+    print("PASS GPT61: retained model ID, Responses routing, OFF-to-low clamp, 1.05M/128K metadata, effort ladder, authoritative live catalog handling and regression assertions")
     return 0
 
 if __name__ == "__main__":

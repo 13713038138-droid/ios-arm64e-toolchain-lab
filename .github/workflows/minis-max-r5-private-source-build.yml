@@ -306,7 +306,7 @@ jobs:
             echo "Pinned OpenMinis source commit: $SOURCE_COMMIT"
             echo "R5 isolated bundle ID: $MINIS_MAX_BUNDLE_ID"
             echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
-            echo 'GPT-6.1-Sol: Codex OAuth catalog + dynamic-response reasoning fallback + reasoning rule + Codex client Version 0.159.1 verified by source and compiled-binary gates; targeted XCTest is required for release.'
+            echo 'GPT-6.1-Sol: Codex OAuth catalog + dynamic-response reasoning fallback + reasoning rule + Codex client Version 0.159.1; Release simulator XCTest validates catalog/routing and the binary check verifies the client-version marker. Live account entitlement remains unverified.'
             echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
             echo 'Developer tools: 19 specialist references, automatic routing, token/log optimizer, Python bootstrap, static binary inspection, local DEB factory, ABI-v2 preflight, checkpoint journal, skill ZIP hardening and chat layout optimization.'
             echo 'Not claimed: full native IDE, persistent background daemon, full Apple SDK download manager, C-function hook ABI inference or live ChatGPT entitlement validation.'
@@ -341,7 +341,7 @@ jobs:
           Minis Dev Ultra MAX R5.2 — isolated TrollStore test build
           
           Included:
-          - GPT-6.1-Sol Codex OAuth picker entry, dynamic-response reasoning fallback when the backend omits the flag, reasoning ceiling, Codex client Version 0.159.1, compiled-binary marker gate and targeted iOS XCTest.
+          - GPT-6.1-Sol Codex OAuth picker entry, dynamic-response reasoning fallback when the backend omits the flag, reasoning ceiling, Codex client Version 0.159.1, Release simulator XCTest for catalog/effort/routing, and compiled client-version marker check.
           - HookLab slash command and evidence-first pass-through Logos scaffolding for verified Objective-C class methods.
           - Dev Ultra automatic task routing and 19 specialist references.
           - Token/log cost diagnostics, lazy Python 3 bootstrap, static IPA/DEB/Mach-O inspection, local Theos DEB build/verification, ABI-v2 preflight, resumable checkpoint journal.

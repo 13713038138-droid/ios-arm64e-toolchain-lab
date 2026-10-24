@@ -49,19 +49,7 @@ API = '''            if let reasoning = (item["supports_reasoning"] as? Bool)
             if authoritative.supportsReasoning != nil { merged.supportsReasoning = authoritative.supportsReasoning }
             if authoritative.modalityOverride != nil { merged.modalityOverride = authoritative.modalityOverride }
 '''
-TESTS = '''    func testGPT61SolIsAppendedForGPT6OAuthCatalog() {
-        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt6Sol])
-        XCTAssertEqual(result.filter { $0.id == "gpt-6.1-sol" }.count, 1)
-        XCTAssertEqual(result.last?.displayName, "GPT-6.1-Sol")
-        XCTAssertEqual(result.last?.supportsReasoning, true)
-    }
-
-    func testGPT61SolIsNotInjectedIntoUnrelatedOAuthCatalog() {
-        let result = OpenAIModelsAPI.appendKnownGPT61SolIfFamilyAvailable(to: [LLMModel.gpt55])
-        XCTAssertFalse(result.contains { $0.id == "gpt-6.1-sol" })
-    }
-
-    func testBothAreOfferedOverCodexOAuth() {
+TESTS = '''    func testBothAreOfferedOverCodexOAuth() {
         XCTAssertEqual(LLMModel.gpt6Luna.id, "gpt-6-luna")
         XCTAssertTrue(ids.contains("gpt-6-luna"))
         XCTAssertEqual(ThinkingLevelCatalog.declaredMaxLevel(for: "gpt-6-sol"), .max)
@@ -109,8 +97,8 @@ class Tests(unittest.TestCase):
         api = (root / "src/ios/Providers/OpenAI/OpenAIModelsAPI.swift").read_text()
         self.assertIn('if id == "gpt-6.1-sol", model.supportsReasoning == nil', api)
         self.assertIn("model.supportsReasoning = true", api)
-        self.assertIn("appendKnownGPT61SolIfFamilyAvailable(to: discovered)", api)
-        self.assertIn("return discovered + [LLMModel.gpt61Sol]", api)
+        self.assertNotIn("appendKnownGPT61SolIfFamilyAvailable", api)
+        self.assertIn("let models = appendBuiltInImageModels(to: discovered)", api)
         self.assertIn("var merged = byId[authoritative.id] ?? authoritative", api)
         self.assertIn('if authoritative.id == "gpt-6.1-sol"', api)
         self.assertIn("if authoritative.reasoningEffortValues != nil", api)
