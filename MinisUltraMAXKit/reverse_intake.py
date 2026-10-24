@@ -237,7 +237,7 @@ def main(argv=None):
     a=parser.parse_args(argv)
     if a.action=="doctor": return core.main(["doctor"])
     try:
-        if not 1<=a.count<=128: raise IntakeError("count must be 1..128")
+        if a.action!="search" and not 1<=a.count<=128: raise IntakeError("count must be 1..128")
         if a.action=="disasm" and a.at is None:
             raise IntakeError("disasm requires --at vmaddr")
         result=search_package(a.file,a.search.strip()[:128]) if a.action=="search" else inspect(a.file,a.member,a.search[:128],a.at,a.count)
