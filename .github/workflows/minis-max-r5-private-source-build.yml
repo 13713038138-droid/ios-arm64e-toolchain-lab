@@ -99,7 +99,7 @@ jobs:
           MINIS_MAX_BUNDLE_ID="$MINIS_MAX_BUNDLE_ID" python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_ips_sigtrap.py" "$RUNNER_TEMP/OpenMinis"
           grep -q "minisIsolatedContainerBase" "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+RequestBudget.swift"
           grep -q "FileProvider registration skipped" "$RUNNER_TEMP/OpenMinis/src/ios/MinisApp.swift"
-          grep -q "group.com.openminis.devultramax.r5" "$RUNNER_TEMP/OpenMinis/src/ios/Shared/SharedContainerStore.swift"
+          grep -q "group.$MINIS_MAX_BUNDLE_ID" "$RUNNER_TEMP/OpenMinis/src/ios/Shared/SharedContainerStore.swift"
           swift "$GITHUB_WORKSPACE/MinisUltraMAXKit/test_visible_range.swift"
           grep -q 'preparedFramesAreMonotone' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/MessageList/MessageListLayout.swift"
           grep -q 'decodedTotal' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Session/SkillStore.swift"
