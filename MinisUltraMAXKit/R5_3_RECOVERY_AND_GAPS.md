@@ -22,7 +22,7 @@ R5.2 source patch originally inserted a GPT-6.1 Sol entry into the Codex
 OAuth static seed list. Real device evidence showed this is misleading, so R5.3
 removes that forced static seed but preserves the GPT-6.1 API-key catalog entry,
 Responses routing, effort metadata and enrichment ONLY if authenticated Codex
-model discovery itself returns the id. Client version 0.159.1 is not a
+model discovery itself returns the id. Client version 0.163.0 is not a
 substitute for server account authorization. R5.3 additionally
 recognizes the precise server-rejection phrase "not supported when using Codex"
 in response detail and reports an account-model denial rather than a generic
@@ -96,3 +96,18 @@ silently, force an IPA install, publish the user's private sources in the public
 toolchain repository, or mark a build as installable without signature, SHA-256,
 rollback and relevant device checks. The R5.3 branch remains isolated until
 its portable, pinned-source and device build gates are independently verified.
+
+### Original works / MAX fails: compatible client candidate (2026-10-24)
+The user confirmed GPT-6.1 Sol ACTUALLY replies in the original Minis using
+OpenAI/ChatGPT sign-in, while the isolated MAX R5 imported the original backup
+and got an explicit Codex 400. Account-wide lack of entitlement is NOT established.
+MAX R5 pinned code advertises codexClientVersion 0.155.0. OpenAI Codex issue
+openai/codex#55028 documented an identical 400 with CLI 0.153.4, followed by
+successful GPT-6.1 Sol calls after CLI 0.163.0 using the same account and model.
+R5.3 uses 0.163.0 as an unverified compatibility *candidate* in the Version,
+User-Agent, and model-discovery client_version header across both request paths.
+This does not prove request equivalence or authorize another user's account.
+Compare original and MAX provider-instance credential type, account identity
+(hashes only), model ID, effective endpoint, version and non-secret request field
+names; do not capture credentials or full prompt. A real device request must
+prove a served-model response before final delivery. Original Minis remains intact.
