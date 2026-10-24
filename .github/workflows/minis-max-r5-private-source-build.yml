@@ -1,11 +1,12 @@
-name: Minis Dev Ultra MAX R5.4 Auto Engineer IPA build
-# R5.4 isolated candidate using verified macOS-15 pipeline. Preserve original Minis AND working R5.3.
+name: Minis Dev Ultra MAX R5.5 Auto Engineer IPA build
+# R5.5 isolated candidate using verified macOS-15 pipeline. Preserve original Minis AND working R5.3.
 on:
   push:
     branches:
       - main
       - minis-r5-400-devcontinuation-20261024
       - minis-r54-autopilot-20261024
+      - minis-r55-share-engine-20261024
     paths:
       - '.github/workflows/minis-max-r5-private-source-build.yml'
       - 'MinisUltraMAXKit/**'
@@ -346,10 +347,10 @@ jobs:
             echo "Pinned OpenMinis source commit: $SOURCE_COMMIT"
             echo "R5 isolated bundle ID: $MINIS_MAX_BUNDLE_ID"
             echo 'Signing: ad-hoc, TrollStore testing only; not App Store signed'
-            echo "GPT-6.1 Sol: preserve tested R5.3 compatible model source and Version 0.163.0; R5.4 requires separate device acceptance. Simulator XCTest unavailable due to device-only iSH."
+            echo "GPT-6.1 Sol: preserve tested R5.3 compatible model source and Version 0.163.0; R5.5 requires separate device acceptance. Simulator XCTest unavailable due to device-only iSH."
             echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
             echo 'Developer tools: 19 professional references, bounded Auto Engineer runner and checkpoint, /devauto bundled skill, Continue/Fix, HookLab, Python, local DEB factory, binary inspection, ABI-v2 and token optimization.'
-            echo 'Not claimed: unrestricted autonomous source edits by Python, persistent daemon, full Apelin IDE, full SDK manager, unsupported Hook/ABI, or R5.4 device acceptance.'
+            echo 'Not claimed: unrestricted autonomous source edits by Python, persistent daemon, full Apelin IDE, full SDK manager, unsupported Hook/ABI, or R5.5 device acceptance.'
             echo 'Original Stheno source repositories were not checked out or modified.'
             echo 'Source manifest (SHA-256):'
             find "$GITHUB_WORKSPACE/MinisUltraMAXKit" -type f ! -path '*/__pycache__/*' -print | sort | while IFS= read -r f; do shasum -a 256 "$f"; done
@@ -372,13 +373,13 @@ jobs:
           test -s "$LIMITS"
           test -s "$PROVENANCE"
           (cd "$(dirname "$IPA")" && shasum -a 256 "$(basename "$IPA")" > "$(basename "$SHA")")
-          TAG="minis-max-r54-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          TAG="minis-max-r55-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
           MODEL_GATE="$RUNNER_TEMP/ultra-output/GPT61_MODEL_GATE.txt"
           NOTES="$RUNNER_TEMP/ultra-output/RELEASE_NOTES.txt"
           test -s "$MODEL_GATE"
           test -s "$RUNNER_TEMP/gpt61-tests.log"
           cat > "$NOTES" <<'EOF'
-          Minis Dev Ultra MAX R5.4 — isolated Auto Engineer TrollStore test candidate
+          Minis Dev Ultra MAX R5.5 — isolated Auto Engineer TrollStore test candidate
           
           Included:
           - GPT-6.1-Sol API-key definition and account-specific live Codex discovery (not forced into OAuth seed), reasoning metadata, Responses routing, Version 0.163.0, standalone Swift/source regressions and binary marker checks.
@@ -390,7 +391,7 @@ jobs:
           
           Important limits:
           - Install only as a separate TrollStore test app. This is not an Apple Developer-signed or App Store replacement. Keep the original Minis app and its data installed.
-          - GPT-6.1 Sol was reported working on R5.3 using ChatGPT login. R5.4 is separately installed and still needs its own device validation.
+          - GPT-6.1 Sol was reported working on R5.3 using ChatGPT login. R5.5 is separately installed and still needs its own device validation.
           - iOS Simulator XCTest NOT RUN: upstream libish_emu.a has iOS-device-only objects. Standalone tests and device Release compile do not imply device functional acceptance.
           - HookLab emits a pass-through starter, not proof the target class/method exists. It does not infer C-function prototypes or install packages automatically.
           - No background daemon, unrestricted autonomous source edits, full Apelin IDE or arbitrary SDK installation. Foreground agent and existing tool permissions are required.
@@ -398,7 +399,7 @@ jobs:
           if gh release view "$TAG" --repo "$PUBLISH_REPO" >/dev/null 2>&1; then
             echo "Release $TAG already exists; uploading the verified assets."
           else
-            gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5.4 — Auto Engineer test build" --notes-file "$NOTES"
+            gh release create "$TAG" --repo "$PUBLISH_REPO" --target "$SOURCE_SHA" --title "Minis Dev Ultra MAX R5.5 — Auto Engineer test build" --notes-file "$NOTES"
           fi
           gh release upload "$TAG" --repo "$PUBLISH_REPO" --clobber "$IPA" "$SHA" "$LIMITS" "$PROVENANCE" "$MODEL_GATE" "$NOTES" "$RUNNER_TEMP/r5-build.log" "$RUNNER_TEMP/minis-build.log" "$RUNNER_TEMP/gpt61-tests.log"
           echo "R5 IPA build completed. IPA and verification evidence were uploaded to the public R5 toolchain Release." >> "$GITHUB_STEP_SUMMARY"
