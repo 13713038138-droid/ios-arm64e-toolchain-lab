@@ -98,6 +98,24 @@ def patch_provider(s):
         }
         if !isOAuth { return true }''',
         "GPT-6.1 Sol official Responses API routing")
+    # Preserve the Codex backend's specific account-model denial instead of
+    # displaying a misleading generic 400 or silently falling back.
+    return replace_once(
+        s,
+        '        // Try to extract error message from JSON body\n',
+        '''        // GPT-6.1 restore can add a model entry without granting access to it.
+        // Only classify the exact server denial; other HTTP 400s remain intact.
+        if statusCode == 400,
+           let data = body.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let detail = json["detail"] as? String,
+           detail.localizedCaseInsensitiveContains("not supported when using Codex") {
+            return .providerError(
+                message: "HTTP 400: this model is not enabled for the current ChatGPT/Codex account. A restored backup does not grant access. Refresh the online model list. Server: \(String(detail.prefix(240)))")
+        }
+        // Try to extract error message from JSON body
+''',
+        "Codex account model denial clarity")
 
 
 def patch_agent(s):
@@ -261,6 +279,7 @@ def verify(root):
         '({ $0.hasPrefix("gpt-6.1-sol") }, .max)' in c,
         'static let codexClientVersion = "0.159.1"' in p,
         'model.id.lowercased() == "gpt-6.1-sol"' in p and 'customBaseURL == nil, !isAzure' in p,
+        'detail.localizedCaseInsensitiveContains("not supported when using Codex")' in p,
         'if lid == "gpt-6.1-sol" { return "low" }' in agent,
         'XCTAssertTrue(ids.contains("gpt-6.1-sol"))' in x and 'LLMModel.gpt61Sol' in x,
         'atLeast(OpenAIProvider.codexClientVersion, "0.159.1")' in x,
