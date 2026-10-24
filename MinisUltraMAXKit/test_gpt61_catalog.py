@@ -85,6 +85,10 @@ class Tests(unittest.TestCase):
         patch.verify(root)
         types = (root / "src/ios/Providers/LLMTypes.swift").read_text()
         self.assertIn('id: "gpt-6.1-sol"', types)
+        codex_start = types.index("static let allOpenAICodexOAuth: [LLMModel] =")
+        codex_body = types[codex_start:types.index("\n    ]", codex_start)]
+        self.assertNotIn(".gpt61Sol", codex_body, "unsupported Codex accounts must not receive a static model seed")
+        self.assertIn('XCTAssertFalse(ids.contains("gpt-6.1-sol")', (root / "src/ios/MinisTests/GPT6SolLunaOpus55Tests.swift").read_text())
         self.assertIn("contextWindow: 1_050_000", types)
         self.assertIn("maxOutputTokens: 128_000", types)
         self.assertIn('reasoningEffortValues: ["low", "medium", "high", "xhigh", "max"]', types)
