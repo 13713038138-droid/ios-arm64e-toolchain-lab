@@ -273,6 +273,10 @@ agent_loop = extra.with_name("engineer_agent_loop.py")
 assert not agent_loop.exists(), "NO-GO: refusing to overwrite existing agent loop"
 shutil.copy2(Path(__file__).with_name("engineer_agent_loop.py"), agent_loop)
 agent_loop.chmod(0o644)
+evidence_engine = extra.with_name("breakthrough_engine.py")
+assert not evidence_engine.exists(), "NO-GO: refusing to overwrite existing investigation engine"
+shutil.copy2(Path(__file__).with_name("breakthrough_engine.py"), evidence_engine)
+evidence_engine.chmod(0o644)
 reverse_analyzer = extra.with_name("reverse_lab.py")
 assert not reverse_analyzer.exists(), "NO-GO: refusing to overwrite preexisting ReverseLab"
 shutil.copy2(Path(__file__).with_name("reverse_lab.py"), reverse_analyzer)
