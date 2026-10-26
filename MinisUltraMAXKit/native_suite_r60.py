@@ -140,7 +140,10 @@ def macho(path):
 def ipa_gate(path,expected_id=None):
     p=Path(path)
     if not p.is_file() or p.stat().st_size>MAX_IPA:raise NoGo("missing or oversized IPA")
-    digest=hashlib.sha256(p.read_bytes()).hexdigest()
+    h=hashlib.sha256()
+    with p.open("rb") as stream:
+        for chunk in iter(lambda:stream.read(1024*1024),b""):h.update(chunk)
+    digest=h.hexdigest()
     with zipfile.ZipFile(p,"r") as z:
         names=z.namelist()
         if len(names)>120000 or len(names)!=len(set(names)):raise NoGo("duplicate or oversized ZIP index")
@@ -158,7 +161,8 @@ def ipa_gate(path,expected_id=None):
         if not isinstance(bundle,str) or not bundle:raise NoGo("invalid bundle identifier")
         if expected_id and bundle!=expected_id:raise NoGo("bundle ID mismatch")
         base=prefix+"default_mount/usr/local/"
-        required=[base+"lib/minis-dev-ultra/native_crash.py",
+        required=[base+"bin/minis-native",base+"lib/minis-dev-ultra/native_suite.py",
+                  base+"lib/minis-dev-ultra/native_crash.py",
                   base+"lib/minis-dev-ultra/native_diagnostics_LICENSE.txt"]
         missing=[x for x in required if x not in names]
         old_bridge=[x for x in names if x.endswith("bin/minis-apelin") or x.endswith("lib/minis-dev-ultra/apelin_bridge.py")]
