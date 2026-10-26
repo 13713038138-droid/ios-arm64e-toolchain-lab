@@ -59,6 +59,8 @@ class NativeR60Test(unittest.TestCase):
         with zipfile.ZipFile(path,"w") as z:
             z.writestr(pref+"Info.plist",plistlib.dumps({"CFBundleIdentifier":bundle}))
             z.writestr(pref+"_CodeSignature/CodeResources",b"ad-hoc test signature metadata")
+            z.writestr(pref+"default_mount/usr/local/bin/minis-native","shell")
+            z.writestr(pref+"default_mount/usr/local/lib/minis-dev-ultra/native_suite.py","pass")
             z.writestr(pref+"default_mount/usr/local/lib/minis-dev-ultra/native_crash.py","pass")
             z.writestr(pref+"default_mount/usr/local/lib/minis-dev-ultra/native_diagnostics_LICENSE.txt","MIT")
             if with_bridge:
