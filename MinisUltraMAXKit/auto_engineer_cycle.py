@@ -106,6 +106,11 @@ def run_cycle(project, objective, patch, expected_head, execute, approve_source_
                 and previous.get("objective_sha256") == result["objective_sha256"]):
             result["status"] = "blocked_repeat_failure"
             result["failure_key"] = prior_key
+            # Reuse the original observed failing check without re-running
+            # identical tests, so the model can investigate actual evidence.
+            prior_checks = [x for x in previous.get("checks", [])
+                            if isinstance(x, dict) and x.get("outcome") != "pass"]
+            result["checks"] = [prior_checks[-1]] if prior_checks else []
             result["next_agent_action"] = "Do not rerun unchanged failing tests. Investigate actual error and author a minimal source patch."
             autopilot.save_state(state_path, result)
             result["checkpoint_file"] = str(state_path)
