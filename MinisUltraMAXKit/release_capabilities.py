@@ -103,7 +103,7 @@ def evaluate(root,level="core"):
             # Each isolated test variant must verify its OWN container group.
             # The already released R5.5 remains the default on older builds.
             bundle = os.environ.get("MINIS_MAX_BUNDLE_ID", "com.openminis.devultramax.r55")
-            if not bundle.startswith("com.openminis.devultramax.r5"):
+            if not (bundle.startswith("com.openminis.devultramax.r5") or bundle == "com.openminis.devultramax.r60"):
                 raise ValueError("NO-GO: unexpected isolated Minis test identity")
             needles = ("group." + bundle,)
         file=root/relative
