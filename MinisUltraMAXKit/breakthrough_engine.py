@@ -36,6 +36,8 @@ def failure_signature(excerpt):
 
 def diagnose(result):
     failed=[x for x in result.get("checks",[]) if isinstance(x,dict) and x.get("outcome")!="pass"]
+    if not failed and isinstance(result.get("cached_failed_check"),dict):
+        failed=[result["cached_failed_check"]]
     if not failed:
         return {"classification":"no_failed_check","evidence":"","failure_signature":None,"has_actual_failure":False}
     entry=failed[-1]; data=str(entry.get("excerpt") or "")
