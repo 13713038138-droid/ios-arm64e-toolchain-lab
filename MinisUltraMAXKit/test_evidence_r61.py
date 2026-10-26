@@ -57,7 +57,8 @@ class EvidenceRepairTests(unittest.TestCase):
         b=cycle.run_cycle(str(self.project),"repair arithmetic",None,None,True,False,False,25)
         self.assertEqual(b["status"],"blocked_repeat_failure")
         self.assertEqual(a["failure_key"],b["failure_key"])
-        self.assertTrue(b["checks"])
+        self.assertEqual(b["checks"],[])
+        self.assertIsInstance(b["cached_failed_check"],dict)
     def test_source_context_and_symbol_search(self):
         a=evidence.probe(self.project,{"kind":"source_context","path":"calc.py","line":2})
         b=evidence.probe(self.project,{"kind":"find_symbol","symbol":"add"})
