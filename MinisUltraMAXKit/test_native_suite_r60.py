@@ -22,6 +22,24 @@ class NativeR60Test(unittest.TestCase):
             self.assertEqual(r["category"],"panic")
             self.assertFalse(r["requires_apelin"])
             self.assertIn("backboardd",r["panic"]["text"])
+    def test_real_crash_uses_uuid_matched_native_engine(self):
+        import test_native_crash_r59 as fixture
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as t:
+            p=pathlib.Path(t)/"crash.ips"
+            binary=pathlib.Path(t)/"matching.macho"
+            p.write_text(fixture.ips())
+            binary.write_bytes(fixture.macho(fixture.GOOD))
+            with patch.dict(sys.modules,{"native_crash":fixture.n}):
+                result=m.triage(p,[binary])
+            self.assertEqual(result["category"],"crash")
+            self.assertEqual(result["frames"][0]["symbol"],"_funcA")
+            self.assertEqual(result["symbolication"]["matched_frames"],1)
+            binary.write_bytes(fixture.macho(fixture.BAD))
+            with patch.dict(sys.modules,{"native_crash":fixture.n}):
+                rejected=m.triage(p,[binary])
+            self.assertEqual(rejected["frames"][0]["symbol_status"],"NO_MATCHING_UUID")
+
     def test_jetsam_not_called_crash(self):
         with tempfile.TemporaryDirectory() as t:
             p=pathlib.Path(t)/"jetsam.ips"
