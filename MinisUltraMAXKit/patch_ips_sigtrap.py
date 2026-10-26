@@ -12,7 +12,7 @@ if len(sys.argv) != 2:
     raise SystemExit("usage: patch_ips_sigtrap.py <OpenMinis repo>")
 repo = Path(sys.argv[1]).resolve()
 bundle_id = os.environ.get("MINIS_MAX_BUNDLE_ID", "com.openminis.devultramax")
-if bundle_id not in ("com.openminis.devultramax", "com.openminis.devultramax.r5", "com.openminis.devultramax.r54", "com.openminis.devultramax.r55", "com.openminis.devultramax.r56", "com.openminis.devultramax.r57", "com.openminis.devultramax.r58", "com.openminis.devultramax.r59"):
+if bundle_id not in ("com.openminis.devultramax", "com.openminis.devultramax.r5", "com.openminis.devultramax.r54", "com.openminis.devultramax.r55", "com.openminis.devultramax.r56", "com.openminis.devultramax.r57", "com.openminis.devultramax.r58", "com.openminis.devultramax.r59", "com.openminis.devultramax.r60"):
     raise SystemExit("NO-GO: unsupported isolated test bundle identity")
 src = repo / "src/ios"
 budget = src / "Agent/Chat/AIChatViewModel+RequestBudget.swift"
