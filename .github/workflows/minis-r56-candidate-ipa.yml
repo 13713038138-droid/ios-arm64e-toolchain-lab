@@ -1,4 +1,4 @@
-name: Minis Dev Ultra MAX R5.7 isolated candidate IPA CI
+name: Minis Dev Ultra MAX R5.8 Apelin isolated candidate IPA CI
 # R5.5 isolated candidate using verified macOS-15 pipeline. Preserve original Minis AND working R5.3.
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - minis-r55-share-engine-20261024
       - minis-r56-reverselab-safe-20261024
       - minis-r57-adaptive-engineer-20261025
+      - minis-r58-apelin-bridge-20261026
     paths:
       - '.github/workflows/minis-r56-candidate-ipa.yml'
       - 'MinisUltraMAXKit/**'
@@ -27,7 +28,7 @@ jobs:
     timeout-minutes: 180
     env:
       SOURCE_COMMIT: b4c0661d5631ebab4d1a2e6f3fd4c805d4030a6c
-      MINIS_MAX_BUNDLE_ID: com.openminis.devultramax.r57
+      MINIS_MAX_BUNDLE_ID: com.openminis.devultramax.r58
       PUBLISH_REPO: ${{ github.repository }}
     steps:
       - name: Check out public R5 build sources
@@ -55,6 +56,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/apply_adaptive_r57.py" --unpack
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_adaptive_engineer.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_adaptive_distribution.py" -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_apelin_r58.py" -v
           python3 -m py_compile "$GITHUB_WORKSPACE/MinisUltraMAXKit/"*.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_devctl.py" -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/MinisUltraMAXKit" -p "test_taskctl.py" -v
@@ -100,6 +102,9 @@ jobs:
           (cd "$GITHUB_WORKSPACE/MinisUltraMAXKit" && sh test_runtime_wrappers.sh)
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/apply_native_max.py" "$RUNNER_TEMP/OpenMinis"
           python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/apply_adaptive_r57.py" --integrate "$RUNNER_TEMP/OpenMinis"
+          python3 "$GITHUB_WORKSPACE/MinisUltraMAXKit/apply_apelin_r58.py" "$RUNNER_TEMP/OpenMinis"
+          grep -q 'case "devapelin"' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
+          grep -q 'R5.8 optional Apelin capability backend' "$RUNNER_TEMP/OpenMinis/src/ios/Agent/Chat/AIChatViewModel+SlashCommands.swift"
           python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py"
           python3 "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/abi_v2_gate.py" doctor >/dev/null
           python3 -m py_compile "$RUNNER_TEMP/OpenMinis/src/ios/default_mount/usr/local/lib/minis-dev-ultra/deb_factory.py"
@@ -207,6 +212,9 @@ jobs:
             /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$ext/Info.plist"
           done
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/devctl.py"
+          test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/apelin_bridge.py"
+          test -x "$APP/default_mount/usr/local/bin/minis-apelin"
+          python3 "$APP/default_mount/usr/local/lib/minis-dev-ultra/apelin_bridge.py" --help | grep -q 'summarize'
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/autopilot.py"
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/source_patch.py"
           test -f "$APP/default_mount/usr/local/lib/minis-dev-ultra/auto_engineer_cycle.py"
@@ -334,8 +342,8 @@ jobs:
           codesign -d -vv "$TEST" 2>&1 | tee "$RUNNER_TEMP/ultra-output/sign-test-evidence.txt"
           (
             cd "$RUNNER_TEMP/ultra-output/isolated"
-            zip -q -r -y MinisDevUltraMAX-R57-CANDIDATE-ADHOC-TROLLSTORE.ipa Payload
-            shasum -a 256 MinisDevUltraMAX-R57-CANDIDATE-ADHOC-TROLLSTORE.ipa > SIGNED_SHA256SUMS.txt
+            zip -q -r -y MinisDevUltraMAX-R58-APELIN-ADHOC-TROLLSTORE.ipa Payload
+            shasum -a 256 MinisDevUltraMAX-R58-APELIN-ADHOC-TROLLSTORE.ipa > SIGNED_SHA256SUMS.txt
           )
           printf '%s\n' \
             "Isolated app: $MINIS_MAX_BUNDLE_ID" \
@@ -361,7 +369,8 @@ jobs:
             echo "GPT-6.1 Sol: preserve tested R5.3 compatible model source and Version 0.163.0; R5.5 requires separate device acceptance. Simulator XCTest unavailable due to device-only iSH."
             echo 'HookLab: devhook slash entry and pass-through Logos scaffold; exact Objective-C signature required; no auto-install.'
             echo 'Developer tools: 19 professional references, bounded Auto Engineer runner and checkpoint, /devauto bundled skill, Continue/Fix, HookLab, Python, local DEB factory, binary inspection, ABI-v2 and token optimization.'
-            echo 'Not claimed: unrestricted autonomous source edits by Python, persistent daemon, full Apelin IDE, full SDK manager, unsupported Hook/ABI, or R5.5 device acceptance.'
+            echo 'Apelin R5.8: read-only official Console JSONL capability bridge, /devapelin entry and /devauto optional routing; no privileged Apelin daemon, installation or respring.'
+            echo 'Not claimed: autonomous Apelin compilation, direct daemon auth, persistent daemon, full SDK manager, Hook/ABI device acceptance.'
             echo 'Original Stheno source repositories were not checked out or modified.'
             echo 'Source manifest (SHA-256):'
             find "$GITHUB_WORKSPACE/MinisUltraMAXKit" -type f ! -path '*/__pycache__/*' -print | sort | while IFS= read -r f; do shasum -a 256 "$f"; done
@@ -375,7 +384,7 @@ jobs:
         run: |
           set -euo pipefail
           exec > >(tee -a "$RUNNER_TEMP/r5-publish.log") 2>&1
-          IPA="$RUNNER_TEMP/ultra-output/isolated/MinisDevUltraMAX-R57-CANDIDATE-ADHOC-TROLLSTORE.ipa"
+          IPA="$RUNNER_TEMP/ultra-output/isolated/MinisDevUltraMAX-R58-APELIN-ADHOC-TROLLSTORE.ipa"
           SHA="$RUNNER_TEMP/ultra-output/isolated/SIGNED_SHA256SUMS.txt"
           LIMITS="$RUNNER_TEMP/ultra-output/isolated/SIGNATURE_LIMITS.txt"
           PROVENANCE="$RUNNER_TEMP/ultra-output/BUILD_PROVENANCE.txt"
@@ -443,9 +452,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MinisDevUltraMAX-R57-${{ github.run_id }}
+          name: MinisDevUltraMAX-R58-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/ultra-output/isolated/MinisDevUltraMAX-R57-CANDIDATE-ADHOC-TROLLSTORE.ipa
+            ${{ runner.temp }}/ultra-output/isolated/MinisDevUltraMAX-R58-APELIN-ADHOC-TROLLSTORE.ipa
             ${{ runner.temp }}/ultra-output/isolated/SIGNED_SHA256SUMS.txt
             ${{ runner.temp }}/ultra-output/isolated/SIGNATURE_LIMITS.txt
             ${{ runner.temp }}/ultra-output/GPT61_MODEL_GATE.txt
