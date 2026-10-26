@@ -34,7 +34,7 @@ class NativeR60Test(unittest.TestCase):
                 result=m.triage(p,[binary])
             self.assertEqual(result["category"],"crash")
             self.assertEqual(result["frames"][0]["symbol"],"_funcA")
-            self.assertEqual(result["symbolication"]["matched_frames"],1)
+            self.assertEqual(result["symbolication"]["resolved_frames"],1)
             binary.write_bytes(fixture.macho(fixture.BAD))
             with patch.dict(sys.modules,{"native_crash":fixture.n}):
                 rejected=m.triage(p,[binary])
