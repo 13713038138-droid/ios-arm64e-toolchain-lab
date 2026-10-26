@@ -19,10 +19,13 @@ import tempfile
 import autopilot
 import auto_engineer_cycle as cycle
 import engineer_recovery
+import breakthrough_engine as breakthrough
 import source_patch
 
 MAX_ROUNDS = 3
 MAX_REPLY = 150 * 1024
+MAX_PROBES_PER_ROUND = 2
+MAX_PROBES_TOTAL = 3
 
 
 def git(project, *args):
@@ -87,6 +90,7 @@ def run(project, objective, bridge, execute=False, approved=False,
         "baseline_head": before["head"], "rounds": [],
         "model_calls": 0, "device_verified": False, "signed_ipa": False,
         "release_ready": False,
+        "investigation": [], "probes": [],
     }
     if before["tracked_dirty"]:
         report["status"] = "blocked_dirty_baseline"
@@ -118,30 +122,61 @@ def run(project, objective, bridge, execute=False, approved=False,
         return report
 
     previous_patch = None
+    previous_diagnosis = None
+    total_probes = 0
     for index in range(1, rounds + 1):
         if status(project) != before:
             report["status"] = "blocked_workspace_changed"
             break
+        diagnosis = breakthrough.diagnose(result)
+        report["investigation"].append({"attempt": index,
+            "classification": diagnosis["classification"],
+            "failure_signature": diagnosis["failure_signature"],
+            "strategy": breakthrough.strategic_hint(previous_diagnosis, diagnosis)})
         request = {
             "schema": 1, "action": "propose_single_file_patch",
             "project": str(project), "objective": objective,
             "baseline_head": before["head"], "attempt": index,
             "previous_patch_sha256": previous_patch,
             "test_status": result["status"],
-            "test_excerpt": autopilot.clean(result.get("checks", [{}])[-1].get("excerpt", ""))
-                            if result.get("checks") else "",
-            "rules": "One existing source file; unified git diff; no commands, installs or credentials.",
+            "test_excerpt": diagnosis["evidence"],
+            "failure_analysis": diagnosis,
+            "strategy": breakthrough.strategic_hint(previous_diagnosis, diagnosis),
+            "allowed_probes": ["source_context", "find_symbol"],
+            "remaining_probes": MAX_PROBES_TOTAL - total_probes,
+            "rules": "One existing source file; unified git diff; no commands, installs or credentials. "
+                     "If evidence is insufficient return status=need_probe with a whitelisted probe.",
         }
-        try:
-            reply = call_bridge(binary, request, timeout, project)
-        except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
-            report["status"] = "blocked_model_bridge"
-            report["bridge_error"] = autopilot.clean(str(exc))
-            break
-        report["model_calls"] += 1
-        # A model adapter must not silently edit the project itself.
-        if status(project) != before:
-            report["status"] = "blocked_bridge_modified_workspace"
+        reply = None
+        for probe_index in range(MAX_PROBES_PER_ROUND + 1):
+            try:
+                reply = call_bridge(binary, request, timeout, project)
+            except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
+                report["status"] = "blocked_model_bridge"
+                report["bridge_error"] = autopilot.clean(str(exc))
+                break
+            report["model_calls"] += 1
+            if status(project) != before:
+                report["status"] = "blocked_bridge_modified_workspace"
+                break
+            if reply.get("status") != "need_probe":
+                break
+            if probe_index >= MAX_PROBES_PER_ROUND or total_probes >= MAX_PROBES_TOTAL:
+                report["status"] = "blocked_probe_budget"
+                break
+            try:
+                evidence = breakthrough.probe(project, reply.get("probe"))
+            except (ValueError, OSError) as exc:
+                report["status"] = "blocked_invalid_probe"
+                report["probe_error"] = autopilot.clean(str(exc))
+                break
+            total_probes += 1
+            report["probes"].append({"attempt":index,"kind":evidence["kind"],
+                "hash":hashlib.sha256(json.dumps(evidence,sort_keys=True).encode()).hexdigest()[:16],
+                "read_only":True})
+            request["probe_result"] = evidence
+            request["remaining_probes"] = MAX_PROBES_TOTAL-total_probes
+        if report["status"].startswith("blocked_"):
             break
         if reply.get("status") in ("provider_error", "bridge_failed"):
             message = str(reply.get("error", "provider error"))[:8192]
@@ -203,6 +238,7 @@ def run(project, objective, bridge, execute=False, approved=False,
                 write_checkpoint(project, objective, report)
                 return report
             item["candidate_reverted"] = True
+            previous_diagnosis = diagnosis
             write_checkpoint(project, objective, {**report, "status": "failed_candidate_reverted"})
     else:
         report["status"] = "blocked_round_limit"
