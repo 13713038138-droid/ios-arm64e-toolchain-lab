@@ -22,9 +22,9 @@ assert all(p.is_file() for p in [budget, app, extension]), "NO-GO: unexpected so
 
 def replace_once(src_text, old, new, label):
     # The isolated R5 clone changes the bundle ID; keep patch signatures aligned
-    # without double-appending the R5 suffix to already-updated source.
-    old = re.sub(r"com\.openminis\.devultramax(?!\.r5)", lambda _: bundle_id, old)
-    new = re.sub(r"com\.openminis\.devultramax(?!\.r5)", lambda _: bundle_id, new)
+    # without double-appending a version suffix to already-updated source.
+    old = re.sub(r"com\.openminis\.devultramax(?!\.r[0-9]+)", lambda _: bundle_id, old)
+    new = re.sub(r"com\.openminis\.devultramax(?!\.r[0-9]+)", lambda _: bundle_id, new)
     n = src_text.count(old)
     if n != 1:
         raise RuntimeError(f"NO-GO {label}: expected one known source site, got {n}")
@@ -1056,7 +1056,7 @@ restore.write_text(restore_text, encoding="utf-8")
 for identity_file in src.rglob("*"):
     if identity_file.is_file() and identity_file.suffix in (".swift", ".entitlements", ".plist"):
         identity_text = identity_file.read_text(encoding="utf-8")
-        normalized = re.sub(r"com\.openminis\.devultramax(?!\.r5)", bundle_id, identity_text)
+        normalized = re.sub(r"com\.openminis\.devultramax(?!\.r[0-9]+)", bundle_id, identity_text)
         if normalized != identity_text:
             identity_file.write_text(normalized, encoding="utf-8")
 ps = (src / "Providers/ProviderConfigStore.swift").read_text(encoding="utf-8")
